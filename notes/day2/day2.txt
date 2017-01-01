@@ -7,10 +7,11 @@
         * level1 crackme (xor password)
         * level2 crackme (self-modification + product password)
         * level3 crackme (anti-debugging + self-modification + sum password)
-    * Writing in assembly
+    * Programming in Assembly
         * exit
         * helloworld
-        * oneko
+        * oneko (if we have time)
+        * bash shell
 
 ==== radare2 ====
 Today we will introduce a new reverse engineering tool called radare2. Radare2
@@ -398,11 +399,11 @@ Compiling this program requires first assembling it, then linking the resulting
 object file. You can complete these steps as follows:
 
 1) Assembling with nasm, the Netwide Assembler
-    nasm -f elfx32 exit.asm
+    nasm -f elf32 exit.asm
     This will create an object file (extension .o) in the current directory
 
 2) Linking with ld, the GNU linker
-    ld -m elfx32_x86_64 -o exit exit.o
+    ld -m elf_i386 -o exit exit.o
     This will create an executable program from the object file
 
 After these steps are complete, you can execute the new binary with "./exit",
@@ -442,29 +443,29 @@ section .data
     mlen: equ $-message
 
 In the assembly code above, labels are used as variables whose value is the
-location of the label. That's what's happening when we write "mov ecx, message".
-This program also has a .data section, where all the data required for
-execution is stored. The "db"/"define byte" command simply writes the
+location of the label. That's what's happening when we write "mov ecx,
+message". This program also has a .data section, where all the data required
+for execution is stored. The "db"/"define byte" command simply writes the
 specified bytes to that place in memory. If we wanted, we could also write data
 of different sizes:
 
 * db is for writing single bytes at a time
 db    0x55                ; just the byte 0x55 
 db    0x55,0x56,0x57      ; three bytes in succession 
-db    'a',0x55            ; character constants are OK 
+db    'A',0x55            ; character constants are OK 
 db    'hello',13,10,'$'   ; so are string constants 
 
 * dw is for writing 2-byte words
 dw    0x1234              ; 0x34 0x12 
-dw    'a'                 ; 0x61 0x00 (it's just a number) 
-dw    'ab'                ; 0x61 0x62 (character constant) 
-dw    'abc'               ; 0x61 0x62 0x63 0x00 (string) 
+dw    'A'                 ; 0x41 0x00 (it's just a number) 
+dw    'AB'                ; 0x41 0x42 (character constant) 
+dw    'ABC'               ; 0x41 0x42 0x43 0x00 (string) 
 
-* dd is for writing 4-byte double words (machine words in x86)
+* dd is for writing 4-byte double words (32-bit machine words)
 dd    0x12345678          ; 0x78 0x56 0x34 0x12 
 dd    1.234567e20         ; floating-point constant 
 
-* dq is for writing 8-byte quad words (machine words in x86_64)
+* dq is for writing 8-byte quad words (64-bit machine words)
 dq    0x123456789abcdef0  ; eight byte constant 
 dq    1.234567e20         ; double-precision float 
 
@@ -478,11 +479,15 @@ as appended to the end of the message string (it's a newline)?
 Now that you've seen a few assembly programs, try writing a program on your
 own. The oneko command makes a cat follow your cursor, and you can add flags to
 change it into other things. Write an assembly program to make something other
-than the default cat chase your cursor. You will have to add "DISPLAY=:0" to the
-environment. You may find it helpful to look at the man pages for the execve()
-syscall and oneko, and unistd_32.h.
+than the default cat chase your cursor. You will have to add "DISPLAY=:0" to
+the environment. You may find it helpful to look at the man pages for the
+execve() syscall and oneko, and unistd_32.h. You can also debug your program
+with gdb.
 
-Solution:
+Solution: The goal is to call
+execve("/usr/games/oneko",
+       ["/usr/games/oneko", "-sakura", 0x0], ["DISPLAY=:0", 0x0]);
+
 global _start
 
 section .text
@@ -508,5 +513,38 @@ argv: dd arg1, arg2, 0x00000000
 
 env1: db "DISPLAY=:0", 0x00
 envp: dd env1, 0x00000000
+
+Now that you've gained some familiarity with nasm, lets try writing code to
+spawn a shell. But this time we'll do it with the additional constraint that
+all necessary data must be pushed onto the stack at runtime. The syntax for
+pushing onto the stack is simply "push <word>". You'll have to use this to
+write the strings you need to memory. Remember to debug with gdb!
+
+Solution: The goal is to call
+execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+
+global _start
+
+section .text
+; execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+_start:
+    ; write "/bin/bash", 0x0 to the stack
+    push 0x00000068    ;push "h000"
+    push 0x7361622f    ;push "/bas"
+    push 0x6e69622f    ;push "/bin"
+    mov ebx, esp       ;ebx points to "/bin/bash"
+
+    push 0x00000000    ;push null pointer
+    push ebx           ;push address of "/bin/bash"
+    mov ecx, esp       ;ecx points to ["bin/bash", 0x0]
+
+    lea edx, [ecx+0x4] ;edx points to a null pointer
+    mov eax, 0xb       ;execve() syscall
+    int 0x80
+
+    ; exit
+    mov eax, 0x1
+    mov ebx, 0x0
+    int 0x80
 
 http://www.nasm.us/doc/nasmdoc3.html#section-3.5

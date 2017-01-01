@@ -1,5 +1,6 @@
 1. Language of Linux
     * C Primer (recommended before class)
+    * LD_PRELOAD / LD_LIBRARY_PATH (?)
     * Assembly Primer (reading only)
         * Registers
         * cdecl

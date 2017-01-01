@@ -1,5 +1,6 @@
 1. Language of Linux
     * C Primer
+    * LD_PRELOAD / LD_LIBRARY_PATH (?)
     * Assembly Primer (reading only)
         * Registers
         * cdecl
@@ -26,19 +27,26 @@
 2. Various crackmes
     * radare2
     * crackmes
-    * Binary bomb
-    * Writing / changing an assembly program
-    * Binary modification (1hr)
+        * tut0-func (functions/basics)
+        * crackme0x00a (strings/modification)
+        * crackme0x05 (add password/debugging)
+        * level1 crackme (xor password)
+        * level2 crackme (self-modification + product password)
+        * level3 crackme (anti-debugging + self-modification + sum password)
+    * Programming in Assembly
+        * exit
+        * helloworld
+        * oneko (if we have time)
+        * bash shell
 3. Exploitation
-    * LD_PRELOAD / LD_LIBRARY_PATH
-    * Memory corruption, overwriting variables
-    * stack-based buffer overflow
-    * jump to function
-    * format string bugs
+    * Overwriting Local Variables
+    * Overwriting the Return Address
+    * Shellcoding + NOP sled (+ shellcode env var?)
+    * ret2libc
 4. Exploitation II
-    * shellcode + NOP sled
     * heap overflow
-    * stack canaries
     * DEP/ROP
+    * format string bugs
+    * stack canaries
     * GOT/PLT
 5. Competition(?)
