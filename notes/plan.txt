@@ -38,12 +38,12 @@
         * helloworld
         * oneko (if we have time)
         * bash shell
-3. Exploitation
+3. Exploitation I
     * Overwriting Local Variables
     * Overwriting the Return Address
     * Shellcoding + NOP sled (+ shellcode env var?)
-    * ret2libc
-    * ROP
+    * Return-to-libc
+    * Return-Oriented Programming
 4. Exploitation II
     * Format String Corruption
     * Format String GOT/PLT Overwrite

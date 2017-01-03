@@ -13,7 +13,7 @@
         * file
         * objdump
         * strings
-        * strace, ltrace
+        * strace, ltrace, hktrace
         * shellnoob
         * hex editor
     * GDB

@@ -1,9 +1,9 @@
 3. Exploitation
     * Overwriting Local Variables
     * Overwriting the Return Address
-    * Shellcoding (+ shellcode env var?)
-    * ret2libc
-    * Format String Memory Corruption
+    * Shellcoding  + NOP sled (+ shellcode env var?)
+    * Return-to-libc
+    * Return-Oriented Programming
 
 ==== Overwriting Local Variables  ====
 
@@ -406,7 +406,7 @@ quit. You can get it to stay open by running "(./input.py <offset> ; cat) |
 *Note* If you make the nop sled too big, the shellcode will actually start
 overwriting itself as it executes!
 
-==== ret2libc ====
+==== Return-to-libc ====
 
 Because buffer overflow vulnerabilities are so dangerous, prevention techniques
 were developed to prevent them. Data execution prevention (DEP) is one such
@@ -503,95 +503,107 @@ http://www.commandlinefu.com/commands/view/12151/get-shellcode-of-the-binary-usi
 https://gbmaster.wordpress.com/2014/07/01/x86-exploitation-101-born-in-a-shell/
 https://burrows.svbtle.com/bash-privileged-mode-quirk
 
-==== Format String Memory Corruption ====
+==== Return-Oriented Programming ====
 
-Next we'll analyze vulnerabilities with a new class of functions, the printf()
-family. Consider the following two calls to printf(), where buf represents a
-string read from the user:
+The last attack gave us a powerful tool to bypass DEP, but we were only able to
+obtain a regular shell. This could still be disastrous if, for example, the
+program were running as a remote service. But how can we use it to get a root
+shell if we already have access to the machine?
 
-printf("%s", buf);
-printf(buf);
+Calling system("/bin/sh -p") won't work, but there is another way to prevent
+bash from dropping privileges. If we call setuid(0) prior to making the call to
+system("/bin/sh"), bash won't drop privileges and we'll be dropped into a root
+shell. Maybe we can adapt the prvious technique to make three function calls.
+Let's diagram how the stack should look. Remember: when a function is called,
+it expects it's return address on the top of the stack, followed by its
+arguments.
 
-Although they look very similar, the second call is actually unsafe. This is
-because printf() can't tell the difference between having a format string and
-well-intentioned arguments on the stack (like in the fist example) and a
-"format string" and whatever happens to be lying on the stack when printf() is
-called (like in the second example). So if printf() is called in the second way
-and the user supplies a string that contains a conversion specification (%s for
-example), then the program will read memory from the stack and print it to the
-user!
+For the call to setuid():  For the call to system():  For the call to exit():
 
-This problem is bad enough on its own, since data leakage is a severe
-vulnerability, but printf() can actually write data as well! The %n conversion
-specification prints the number of characters written so far to the location
-that the corresponding argument points to. How could we use this to our
-advantage?
++---------------------+    +---------------------+    +---------------------+
+|       padding       |    |       padding       |    |       padding       |
++---------------------+    +---------------------+    +---------------------+
+|      &setuid()      |    |   "doesn't matter"  |    |   "doesn't matter"  |
++---------------------+    +---------------------+    +---------------------+
+|         ret         |    |      &system()      |    |   "doesn't matter"  |
++---------------------+    +---------------------+    +---------------------+
+|     0x00000000      |    |         ret         |    |       &exit()       |
++---------------------+    +---------------------+    +---------------------+
+|   "doesn't matter"  |    |     "/bin/bash"     |    |         ret         |
++---------------------+    +---------------------+    +---------------------+
+|   "doesn't matter"  |    |   "doesn't matter"  |    |     0x00000000      |
++---------------------+    +---------------------+    +---------------------+
 
-The assembly of global_overwrite is annotated below:
+Unfortuately, there is a problem. setuid() needs its arugment (0x0) to be in
+the same location where system() and exit() needs the location of exit(). We
+could throw out the call to exit(), but what if system() weren't linked and we
+had to call more functions?
 
-# function prologue
-0x0804846b <+0>:     push   ebp
-0x0804846c <+1>:     mov    ebp,esp
+This could be solved if instead of returning to the next function, we could
+return to a subroutine that would clean up the stack. For example:
 
-# print user input
-0x0804846e <+3>:     mov    eax,DWORD PTR [ebp+0xc]
-0x08048471 <+6>:     add    eax,0x4
-0x08048474 <+9>:     mov    eax,DWORD PTR [eax]
-0x08048476 <+11>:    push   eax
-0x08048477 <+12>:    call   0x8048320 <printf@plt>
-0x0804847c <+17>:    add    esp,0x4
++---------------------+
+|       padding       |
++---------------------+
+|      &setuid()      |
++---------------------+
+|  &clean_up_routine  |
++---------------------+
+|     0x00000000      |
++---------------------+
+|      &system()      |
++---------------------+
+|  &clean_up_routine  |
++---------------------+
+|     "/bin/bash"     |
++---------------------+
+|       &exit()       |
++---------------------+
+|   "doesn't matter"  |
++---------------------+
+|     0x00000000      |
++---------------------+
 
-# print newline
-0x0804847f <+20>:    push   0xa
-0x08048481 <+22>:    call   0x8048350 <putchar@plt>
-0x08048486 <+27>:    add    esp,0x4
+If we knew a reliable way to jump to such a subroutine, an input like the one
+above would work. We can't include it in our input and jump to it, since the
+whole point of this was to bypass DEP, but we CAN jump to other locations in
+memory, most notably those that pop values off the stack and then return. Look
+through the output of "objdump -d ./rop_exploit" and search for occurrences of
+"ret". You'll notice that one of them is preceded by "pop ebx", which means it
+does exactly what we need. It doesn't matter that the value is moved into a
+register, we just need the old "frame" cleared from the stack. This gives us a
+way to chain arbitrarily many function calls together, by concatenating frames
+of the form:
 
-# check if a global variable == 0
-0x08048489 <+30>:    mov    eax,ds:0x804a028
-0x0804848e <+35>:    test   eax,eax
-0x08048490 <+37>:    jne    0x80484a1 <main+54>
++---------------------+
+|       &func()       |
++---------------------+
+| pop-pop-...-pop-ret |
++---------------------+
+|        arg1         |
++---------------------+
+|        arg2         |
++---------------------+
+|        ....         |
++---------------------+
+|        argn         |
++---------------------+
 
-# print message if global variable != 0
-0x08048492 <+39>:    push   0x8048540
-0x08048497 <+44>:    call   0x8048330 <puts@plt>
-0x0804849c <+49>:    add    esp,0x4
-0x0804849f <+52>:    jmp    0x80484ae <main+67>
+Which means we can call setuid(0), system("/bin/bash"), and exit(0) in series,
+cleanly obtaining a root shell. But what if we wanted to do things other than
+call functions? Or wanted to do something that doesn't have a convenient libc
+wrapper? It's still possible, but it becomes more complicated. Rather than only
+returning to functions and pop-ret subroutines, we can in principle return to
+any executable section in the program preceded by a ret instruction to execute
+the code there. These bits of code preceded by ret instructions are called
+gadgets. By chaining gadget locations together, we can execute all kinds of
+instructions.
 
-# print message if global variable == 0
-0x080484a1 <+54>:    push   0x8048566
-0x080484a6 <+59>:    call   0x8048330 <puts@plt>
-0x080484ab <+64>:    add    esp,0x4
+It gets even worse for the poor program. Even though we can only execute
+instructions contained in the binary, there are always more instructions than
+intended since we can jump to any offset within the binary. There is a tool
+called ROPgadget which was made to find gadgets. Use it with "ROPgadget
+--binary ./rop_exploit". You can also add a "--depth <num>" parameter to search
+for even more gadgets.
 
-# function epilogue
-0x080484ae <+67>:    mov    eax,0x0
-0x080484b3 <+72>:    leave
-0x080484b4 <+73>:    ret
-
-This program simply prints either a failure or a success message, depending on
-whether or not a global variable is zero. Very straightforward, but there
-doesn't seem to be any way to so much as touch the variable being checked.
-However, a closer look reveals that printf() is being called unsafely.
-
-Run global_overwrite with a conversion specifier as an argument. Sure enough,
-the program reads a value off the stack and prints it according to the
-specifier. This means that by using a string with arbitrarily many conversion
-specifiers as input, we can read as many values as we want off the stack. So if
-there were a pointer to the global variable somewhere on the stack, we could
-use a %n specifier to corrupt it. The bad news is that the program never
-declares a pointer to the global variable. But the good news is that if we
-print enough values off the stack, we'll eventually reach our own string!
-
-So if we put the address of the global variable in our string, we can read off
-the stack until we reach it, and then use a %n conversion specifier to corrupt
-it. Try doing this on the global_overwrite program. You may find it helpful to
-use an inline python script, like:
-
-./global_overwrite "$(python -c "print '%x ' * 5")"
-
-*Note* Although this is a simple idea, the fact that the stack shifts with the
-length of the input makes it tough. If people need help, offer the following
-hint:
-
-Alignment is easy when the length of the input doesn't change. Try to get
-the last thing printed to be data you control, then *change* characters rather
-than adding or removing them.
+https://github.com/JonathanSalwan/ROPgadget
