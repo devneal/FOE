@@ -43,10 +43,10 @@
     * Overwriting the Return Address
     * Shellcoding + NOP sled (+ shellcode env var?)
     * ret2libc
+    * ROP
 4. Exploitation II
+    * Format String Corruption
+    * Format String GOT/PLT Overwrite
     * heap overflow
-    * DEP/ROP
-    * format string bugs
     * stack canaries
-    * GOT/PLT
 5. Competition(?)

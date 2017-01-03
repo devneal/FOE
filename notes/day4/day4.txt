@@ -1,0 +1,8 @@
+4. Exploitation II
+    * Format String GOT/PLT Overwrite
+    * ROP
+    * heap overflow
+    * stack canaries
+
+==== Return Oriented Programming ====
+

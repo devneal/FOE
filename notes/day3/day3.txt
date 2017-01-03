@@ -3,6 +3,7 @@
     * Overwriting the Return Address
     * Shellcoding (+ shellcode env var?)
     * ret2libc
+    * Format String Memory Corruption
 
 ==== Overwriting Local Variables  ====
 
@@ -502,4 +503,95 @@ http://www.commandlinefu.com/commands/view/12151/get-shellcode-of-the-binary-usi
 https://gbmaster.wordpress.com/2014/07/01/x86-exploitation-101-born-in-a-shell/
 https://burrows.svbtle.com/bash-privileged-mode-quirk
 
-==== 
+==== Format String Memory Corruption ====
+
+Next we'll analyze vulnerabilities with a new class of functions, the printf()
+family. Consider the following two calls to printf(), where buf represents a
+string read from the user:
+
+printf("%s", buf);
+printf(buf);
+
+Although they look very similar, the second call is actually unsafe. This is
+because printf() can't tell the difference between having a format string and
+well-intentioned arguments on the stack (like in the fist example) and a
+"format string" and whatever happens to be lying on the stack when printf() is
+called (like in the second example). So if printf() is called in the second way
+and the user supplies a string that contains a conversion specification (%s for
+example), then the program will read memory from the stack and print it to the
+user!
+
+This problem is bad enough on its own, since data leakage is a severe
+vulnerability, but printf() can actually write data as well! The %n conversion
+specification prints the number of characters written so far to the location
+that the corresponding argument points to. How could we use this to our
+advantage?
+
+The assembly of global_overwrite is annotated below:
+
+# function prologue
+0x0804846b <+0>:     push   ebp
+0x0804846c <+1>:     mov    ebp,esp
+
+# print user input
+0x0804846e <+3>:     mov    eax,DWORD PTR [ebp+0xc]
+0x08048471 <+6>:     add    eax,0x4
+0x08048474 <+9>:     mov    eax,DWORD PTR [eax]
+0x08048476 <+11>:    push   eax
+0x08048477 <+12>:    call   0x8048320 <printf@plt>
+0x0804847c <+17>:    add    esp,0x4
+
+# print newline
+0x0804847f <+20>:    push   0xa
+0x08048481 <+22>:    call   0x8048350 <putchar@plt>
+0x08048486 <+27>:    add    esp,0x4
+
+# check if a global variable == 0
+0x08048489 <+30>:    mov    eax,ds:0x804a028
+0x0804848e <+35>:    test   eax,eax
+0x08048490 <+37>:    jne    0x80484a1 <main+54>
+
+# print message if global variable != 0
+0x08048492 <+39>:    push   0x8048540
+0x08048497 <+44>:    call   0x8048330 <puts@plt>
+0x0804849c <+49>:    add    esp,0x4
+0x0804849f <+52>:    jmp    0x80484ae <main+67>
+
+# print message if global variable == 0
+0x080484a1 <+54>:    push   0x8048566
+0x080484a6 <+59>:    call   0x8048330 <puts@plt>
+0x080484ab <+64>:    add    esp,0x4
+
+# function epilogue
+0x080484ae <+67>:    mov    eax,0x0
+0x080484b3 <+72>:    leave
+0x080484b4 <+73>:    ret
+
+This program simply prints either a failure or a success message, depending on
+whether or not a global variable is zero. Very straightforward, but there
+doesn't seem to be any way to so much as touch the variable being checked.
+However, a closer look reveals that printf() is being called unsafely.
+
+Run global_overwrite with a conversion specifier as an argument. Sure enough,
+the program reads a value off the stack and prints it according to the
+specifier. This means that by using a string with arbitrarily many conversion
+specifiers as input, we can read as many values as we want off the stack. So if
+there were a pointer to the global variable somewhere on the stack, we could
+use a %n specifier to corrupt it. The bad news is that the program never
+declares a pointer to the global variable. But the good news is that if we
+print enough values off the stack, we'll eventually reach our own string!
+
+So if we put the address of the global variable in our string, we can read off
+the stack until we reach it, and then use a %n conversion specifier to corrupt
+it. Try doing this on the global_overwrite program. You may find it helpful to
+use an inline python script, like:
+
+./global_overwrite "$(python -c "print '%x ' * 5")"
+
+*Note* Although this is a simple idea, the fact that the stack shifts with the
+length of the input makes it tough. If people need help, offer the following
+hint:
+
+Alignment is easy when the length of the input doesn't change. Try to get
+the last thing printed to be data you control, then *change* characters rather
+than adding or removing them.
