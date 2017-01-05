@@ -1,8 +1,8 @@
 4. Exploitation II
     * Format String Corruption
     * Format String GOT/PLT Overwrite
-    * heap overflow
-    * stack canaries
+    * Heap Vulnerabilities
+    * Mitigation Techniques
 
 ==== Format String Corruption ====
 
@@ -98,3 +98,164 @@ the last thing printed to be data you control, then *change* characters rather
 than adding or removing them.
 
 ==== Format String GOT/PLT Overwrite ====
+
+Now we'll see how to leverage a format string vulnerability to redirect code
+execution. But first, some information on the global offset table (GOT) and the
+procedure linkage table (PLT).
+
+When a dynamically linked binary is compiled, it can't store shared library
+information. This would defeat the purpose of dynamic linking. Instead,
+whenever a shared variable or function is accessed, the compiler inserts a
+relocation in it's place. This is space in the binary which is left to be
+filled in at runtime. You can view the relocations in a binary with "readelf
+--relocs <binary>". Run this command on global_overwrite. You'll see an output
+like the following:
+
+Relocation section '.rel.dyn' at offset 0x2c4 contains 1 entries:
+ Offset     Info    Type            Sym.Value  Sym. Name
+08049ffc  00000306 R_386_GLOB_DAT    00000000   __gmon_start__
+
+Relocation section '.rel.plt' at offset 0x2cc contains 4 entries:
+ Offset     Info    Type            Sym.Value  Sym. Name
+0804a00c  00000107 R_386_JUMP_SLOT   00000000   printf@GLIBC_2.0
+0804a010  00000207 R_386_JUMP_SLOT   00000000   puts@GLIBC_2.0
+0804a014  00000407 R_386_JUMP_SLOT   00000000   __libc_start_main@GLIBC_2.0
+0804a018  00000507 R_386_JUMP_SLOT   00000000   putchar@GLIBC_2.0
+
+Some of these functions were added by the compiler, but others such as printf()
+can be found in the source code. If the shared data is a variable, this entry
+will be filled as soon as the program is loaded into memory. If it is a
+function, it won't be filled in until the first time the program calls that
+function. This "lazy resolution" is acheived by using the PLT together with the
+GOT.
+
+     global_overwrite:                  GOT:
+     +------------------+               +-----------------+
+     | ...              |               | ...             |
+     | call printf@plt -------+   +-----> GOT[n]: <addr> ------+
+     | ...              |     |   |     | ...             |    |
+     | ...              |     |   |     +-----------------+    |
+     +------------------+     |   |                            |
+                              |   |                            |
+     PLT:                     |   |                            |
+     +--------------------+   |   |                            |
+ +---> PLT[0]:            |   |   |                            |
+ |   |   call resolver    |   |   |                            |
+ |   | ...                |   |   |                            |
+ |   | PLT[n]: <--------------+   |                            |
+ |   |   jmp *GOT[n] -------------+                            |
+ |   |   prepare resolver <------------------------------------+
+ +------ jmp PLT[0]       |
+     | ...                |
+     +--------------------+
+
+At compile time, all calls to printf are replaced with calls to printf@plt.
+For every call to a shared library function, the PLT has an entry with three
+parts:
+
+1) A jump to a corresponding entry in the GOT
+2) A routine to prepare argruments for the resolver
+3) A jump to the resolver, which is the first entry of the PLT
+
+==== Heap Vulnerabilities ====
+
+Next we'll turn our attention to exploits on the heap. The heap is just another
+segment in memory. The user can dynamically allocate memory on the heap through
+the use of the malloc() function, which takes a number of bytes and returns a
+pointer to a chunk of memory with that size. After a chunk of memory has been
+allocated, the user can deallocate it with the free() function, which takes a
+pointer to memory on the heap and returns the corresponding chunk to the
+operating system. The dynamic memory returned by the heap is slower than memory
+on the stack, and is typically used for larger objects which need to be acessed
+from different functions. 
+
+When a chunk of memory is allocated on the heap, the operating system creates a
+structure like so:
+
++-----------+---------+-+-------------------------------------+
+| prev_size |   size  |f|    data (8 + (n / 8) * 8 bytes)     | -> heap grows
++-----------+---------+-+-------------------------------------+    this way
+                          ^
+                          |
+                          |
+                  pointer returned (ptr)
+
+The size of the chunk is stored in the 4 bytes behind the allocated memory
+(ptr - 0x4) and the size of the previous chunk is stored in the 4 bytes behind
+that (ptr - 0x8). The heap is aligned such that the last 3 bits of the size are
+always zero. Those three bits are instead used for flags denoting information
+about the block.
+
+0x01 PREV_INUSE    - set when previous chunk is in use
+0x02 IS_MAPPED     - set if chunk was obtained with mmap()
+0x04 NON_MAIN_AREA - set if chunk belongs to a non-main arena
+
+The heap grows downward toward higher memory addresses, the opposite direction
+of the stack. When a heap is freed, the chunk of data is used differently. The
+first 4 bytes store a pointer to the next freed chunk, and the second 4 bytes
+are used to store a pointer to the previous one.
+
++-----------+---------+-+----------+----------+---------------+
+| prev_size |   size  |f| fwd_ptr  | prv_ptr  |               |
++-----------+---------+-+-------------------------------------+
+
+There are additional complications for large blocks, but we won't go over them
+here. In fact heaps get much more complicated and there are lots of different
+implementations around, but this is the basic implementation.
+
+Heap overflows work similarly to stack overflows, but writes are downward,
+toward higher memory addresses. By overflowing a buffer in the heap you can
+overwrite the metadata and data of later chunks . This can be exploited if the
+data is used later in the program. Function pointers are a popular target for
+heap overflows, as you can see in the heap overflow exercise. You already have
+all the instruction you need to solve it now.
+
+Heaps can also be exploited via use-after-free vulnerabilities. These
+vulnerabilities rise when:
+
+1) Memory is allocated on the heap
+2) That memory is freed, but the pointer is still kept
+3) The same memory is allocated and used for a different purpose
+4) The program attempts to use the old pointer for it's original purpose
+
+For example, consider two structs:
+
+struct toystr {
+    void (*message)(char*);
+    char buffer[20];
+}
+
+struct person {
+    int favorite_num;
+    int age;
+    char name[16];
+}
+
+Assume a toystr is allocated and subsequently freed, but the pointer is kept.
+If memory is later allocated for a person and the favorite_num field can be
+controlled, then the next time message() is called with the first pointer, the
+program will crash (or worse).
+
+Try to make this happen in heap_uaf.
+
+http://security.cs.rpi.edu/courses/binexp-spring2015/lectures/17/10_lecture.pdf
+
+Solution:
+#!/usr/bin/python
+
+print 1          # make coolguy
+print "A"        # name coolguy
+print 3          # delete coolguy
+print 2          # make person
+print "A"        # name person
+print 0x08048663 # set number as shell location
+print 0          # set person's age
+print 5          # call message with dangling coolguy pointer
+
+==== Mitigation Techniques ====
+
+ASLR
+
+Stack canaries
+
+RELRO
