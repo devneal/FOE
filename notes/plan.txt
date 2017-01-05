@@ -47,6 +47,6 @@
 4. Exploitation II
     * Format String Corruption
     * Format String GOT/PLT Overwrite
-    * heap overflow
-    * stack canaries
+    * Heap Vulnerabilities
+    * Mitigiation Techniques
 5. Competition(?)

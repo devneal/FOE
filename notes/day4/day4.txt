@@ -129,7 +129,7 @@ function, it won't be filled in until the first time the program calls that
 function. This "lazy resolution" is acheived by using the PLT together with the
 GOT.
 
-     global_overwrite:                  GOT:
+     prog:                              GOT:
      +------------------+               +-----------------+
      | ...              |               | ...             |
      | call printf@plt -------+   +-----> GOT[n]: <addr> ------+
@@ -156,6 +156,57 @@ parts:
 1) A jump to a corresponding entry in the GOT
 2) A routine to prepare argruments for the resolver
 3) A jump to the resolver, which is the first entry of the PLT
+
+Before the first time printf() is called, the corresponding entry of the GOT
+points to the section of the PLT entry that prepares and jumps to the resolver.
+It is then the resolver's job to find printf()'s location, update the pointer in
+the GOT to point to it, and make the call to it. Subsequent calls to printf()
+will then go from the PLT to the GOT to the function's actual code.
+
+This procedure can be exploited by simply overwriting an entry in the GOT.
+Then the next time the program attempts to call the function, it will instead
+execute whatever code is pointed to in the GOT.
+
+Format string vulnerabilities give us just the arbitrary write needed to
+overwrite a GOT entry. But since we can only write the number of characters
+printed, and we need to write an address, we have to be clever in order to
+avoid printing millions of characters every time we try to run our exploit.
+There are a few properties of printf() that combat this:
+
+Minimum Field Width:
+A format specifier such as %10x will print a hexadecimal value, and also print
+at least 10 characters while doing so.
+
+Direct Parameter Access:
+A format specifier such as %5$x will print the fifth argument (from printf()'s
+perspective) in hexadecimal. Similarly, %5$n will write to the fifth argument.
+$ is a special character to bash, so you have to escape it on the command line.
+
+Short Writes: 
+Since an address is such a large number, it is helpful to make more than one
+write to fully overwrite it. For example, if we want to write 0x0804abcd to
+address addr, we can first write 0xabcd to addr, then write 0x0804 to addr+2.
+printf() format specifiers can include a length modifier to specify how many
+bytes the write should take. The h specifier is for shorts, which are two bytes
+long. Since we can only increase the number of characters printed, we will have
+to write 0x10804 to addr+2 instead.
+
+Take a look at got_overwrite.c. If we can overwrite the GOT entry for exit()
+with the locatin of the win(), we can get that function to execute. You can get
+the location of exit()'s GOT entry with "readelf --relocs got_overwrite" and
+you can get the location of win()'s code with "readelf --symbols
+got_overwrite". Try to make the program execute win().
+
+Solution:
+#!/usr/bin/python
+import struct
+
+# write 0x080484eb to 0x0804a01c
+target_address          = struct.pack("<I", 0x0804a01c)
+target_address_plus_two = struct.pack("<I", 0x0804a01c+2)
+
+# two writes
+print target_address + target_address_plus_two + "%34019x%2$n%33561x%3$n"
 
 ==== Heap Vulnerabilities ====
 
