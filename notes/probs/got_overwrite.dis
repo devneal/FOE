@@ -1,0 +1,67 @@
+# function prologue
+0x4008a8:    push   rbp
+0x4008a9:    mov    rbp,rsp
+0x4008ac:    sub    rsp,0x1030
+
+# ???
+0x4008b3:    mov    DWORD PTR [rbp-0x1024],edi
+0x4008b9:    mov    QWORD PTR [rbp-0x1030],rsi
+0x4008c0:    mov    rax,QWORD PTR fs:0x28
+0x4008c9:    mov    QWORD PTR [rbp-0x8],rax
+0x4008cd:    xor    eax,eax
+
+# malloc(16)
+0x4008cf:    mov    edi,0x10
+0x4008d4:    call   0x4006d0 <malloc@plt>
+
+
+0x4008d9:    mov    QWORD PTR [rbp-0x1020],rax
+0x4008e0:    mov    rax,QWORD PTR [rbp-0x1020]
+0x4008e7:    mov    DWORD PTR [rax],0x1
+
+# malloc(8)
+0x4008ed:    mov    edi,0x8
+0x4008f2:    call   0x4006d0 <malloc@plt>
+
+
+0x4008f7:    mov    rdx,rax
+0x4008fa:    mov    rax,QWORD PTR [rbp-0x1020]
+0x400901:    mov    QWORD PTR [rax+0x8],rdx
+0x400905:    mov    edi,0x10
+0x40090a:    call   0x4006d0 <malloc@plt>
+
+
+0x40090f:    mov    QWORD PTR [rbp-0x1018],rax
+0x400916:    mov    rax,QWORD PTR [rbp-0x1018]
+0x40091d:    mov    DWORD PTR [rax],0x2
+0x400923:    mov    edi,0x8
+0x400928:    call   0x4006d0 <malloc@plt>
+
+
+0x40092d:    mov    rdx,rax
+0x400930:    mov    rax,QWORD PTR [rbp-0x1018]
+0x400937:    mov    QWORD PTR [rax+0x8],rdx
+0x40093b:    mov    rdx,QWORD PTR [rip+0x20074e]        # 0x601090 <stdin>
+0x400942:    lea    rax,[rbp-0x1010]
+0x400949:    mov    esi,0x1000
+0x40094e:    mov    rdi,rax
+0x400951:    call   0x4006c0 <fgets@plt>
+0x400956:    mov    rax,QWORD PTR [rbp-0x1020]
+0x40095d:    mov    rax,QWORD PTR [rax+0x8]
+0x400961:    lea    rdx,[rbp-0x1010]
+0x400968:    mov    rsi,rdx
+0x40096b:    mov    rdi,rax
+0x40096e:    call   0x400690 <strcpy@plt>
+0x400973:    mov    rdx,QWORD PTR [rip+0x200716]        # 0x601090 <stdin>
+0x40097a:    lea    rax,[rbp-0x1010]
+0x400981:    mov    esi,0x1000
+0x400986:    mov    rdi,rax
+0x400989:    call   0x4006c0 <fgets@plt>
+0x40098e:    mov    rax,QWORD PTR [rbp-0x1018]
+0x400995:    mov    rax,QWORD PTR [rax+0x8]
+0x400999:    lea    rdx,[rbp-0x1010]
+0x4009a0:    mov    rsi,rdx
+0x4009a3:    mov    rdi,rax
+0x4009a6:    call   0x400690 <strcpy@plt>
+0x4009ab:    mov    edi,0x0
+0x4009b0:    call   0x400710 <exit@plt>

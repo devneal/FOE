@@ -16,7 +16,8 @@
         * call, ret
         * cdecl
     * Life of a Program (1hr)
-        * LD_PRELOAD / LD_LIBRARY_PATH
+        * Write adder.c
+        * LD_PRELOAD / LD_LIBRARY_PATH (?)
     * ELF Format
         * ELF-Walkthrough.png
         * readelf
@@ -26,7 +27,7 @@
         * file
         * objdump
         * strings
-        * strace, ltrace, hktrace
+        * strace, ltrace
         * hex editor + rasm2
     * GDB (2hr)
         * break
@@ -167,6 +168,11 @@ http://www.cs.virginia.edu/~evans/cs216/guides/x86.html
 
 ==== Life of a Program ====
 
+* Ask the students to write a program that reads two numbers from the command
+line and prints their sum. Have them write a separate function that returns the
+sum of the two numbers.
+
+
 1) Composition
 2) Preprocessing
 3) Compiling
@@ -207,10 +213,6 @@ Program is executed
 
 Today is about learning how programs are created and executed in precise
 detail.
-
-* Ask the students to write a program that reads two numbers from the command
-line and prints their sum. Have them write a separate function that returns the
-sum of the two numbers.
 
 #include <stdio.h>
 
@@ -377,7 +379,7 @@ added with "add eax,edx" which is represented as 01 d0 in memory.
 Suppose we wanted a subtractor instead. If we replace the add instruction with
 a subtract one, the arguments will be subtracted instead.
 
-* rasm2
+* rasm2 (rasm2 -a x86 -b 32 'mov eax, 33')
 
 We need to find the memory representation (or opcode) for "sub eax,edx". We
 will use a tool called rasm2. Run "rasm2 'sub eax, edx'" to get the desired
@@ -398,6 +400,8 @@ This brings us to the most powerful tool in the reverse engineer's toolkit -
 the debugger. Debuggers allow us to step through a program's execution one
 instruction at a time, all while viewing and even editing memory and register
 contents.
+
+https://github.com/radare/radare2/wiki/Rasm2
 
 ==== GDB ====
 
@@ -504,5 +508,6 @@ the pane with gdb run "break main" followed by "run" (or just "start") and
 watch gdb turn into a graphical debugger before your eyes!
 
 From here, we'll try some crackmes.
+
 
 https://github.com/snare/voltron
