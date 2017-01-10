@@ -14,17 +14,27 @@
         * bash shell
 
 ==== radare2 ====
+
+* Introduce radare2
+
 Today we will introduce a new reverse engineering tool called radare2. Radare2
 is an open source reverse engineering framework which can be used for
 disassembly, static and dynamic analysis, and patching binaries. We'll reverse
-a few small programs together, then give you some more to work through.
+a few small programs together, then I'll give you some more to work through.
 
 http://www.radare.org/r/
 
 ==== tut0-func ====
+
+* Run radare2 ./func
+
 Run the func binary with "./func". We see that the program takes an integer and
 gives back its sign and the value of an unknown function at that integer. Our
 task is to fully characterize this unknown function.
+
+* a?
+* aa
+* afl
 
 Open the program in radare2 with "radare2 func". You will see a snarky message
 which can be ignored, followed by a prompt like "[0x080483c0]>". This is
@@ -62,10 +72,15 @@ at the disassembly of the main() function. The output is here:
 0x08048670    1 2            sym.__libc_csu_fini
 0x08048674    1 20           sym._fini
 
+* s sym.main
+* pdf
+
 To change our location in the binary, we "seek" there with the "s" command.
 Look at the output of "s?" for more details. Seek to main() by running "s
 sym.main". You'll notice that the location in brackets will change to the
 location of main().
+
+* radare2 variable names
 
 Now that we are at the main() function, we can view it's disassembly with
 "pdf" (print disassembly of function). The output will have arrows to detail
@@ -75,6 +90,10 @@ located 0x8 bytes higher than ebp and "local_14h" for variables located 0x14
 bytes lower than ebp. Since variables can also be referenced by adding to esp,
 variables with names like "local_4h_2" can also appear.
 
+* analyze assembly
+* afv?
+* afvn + pdf
+
 From this disassembly we can see the high-level outline of what the program is
 doing. It calls printf() to print a greeting string, calls scanf() to take our
 input and store it in "local_14h", then calls both func1() and func2() on that
@@ -83,6 +102,10 @@ name) command. Check how to use the command with "afv?" then give "local_14h"
 a more meaningful name such as "input". Then run "pdf" to view the updated
 disassembly.
 
+* pdf @ sym.func1
+* afvn arg_8h input @ sym.func1
+* pdf @ sym.func1
+
 Our new goal is to understand func1() and func2(). You can run commands as if
 you were in a different location by adding @ [location] to the end of a
 command. Run "pdf @ sym.func1" to view the disassembly of func1() while
@@ -90,17 +113,23 @@ remaining in main(). You'll notice that the first argument is referred to as
 "arg_8h". Rename it to "input" with "afvn arg_8h input @ sym.func1". Then rerun
 "pdf @ sym.func1".
 
+* Analyze the jns
+* Confirm bug by running ./func with 0 as input
+
 Looking over the disassembly here, we see the following construct:
 0x080484c1      837d0800       cmp dword [ebp + input], 0
 0x080484c5      7915           jns 0x80484dc
 
-"jns" stands for "jump if not sign". The jump is performed if the sign bit is not
-set when the command is executed. Therefore if the result of input - 0 is
+"jns" stands for "jump if not sign". The jump is performed if the sign bit is
+not set when the command is executed. Therefore if the result of input - 0 is
 nonnegative, the program will jump. By following the arrows we can easily see
 that if the jump is taken, the function will print that our number is positive.
 If the jump is not taken, the function will print that our number is negative.
-Interestingly, there doesn't seem to be any action for if the input is zero.
+Interestingly, the program appears to behave incorrectly if the input is zero.
 Try running the program with zero as input to verify this.
+
+* s sym.func2 + pdf
+* VV
 
 Now that we understand func1(), let's turn our attention to func2(). Seek there
 with "s sym.func2", and run "pdf" to see the function's disassembly, complete
@@ -119,6 +148,8 @@ Visual mode has its own set of commands, such as:
 * :             - run a command from the radare2 shell prompt
 * R             - change colorscheme
 
+* Ask students to fully reverse the program
+
 You can return to the radare2 shell by pressing q twice. From here try to
 reverse engineer the function on your own. Your goal is to determine what the
 function outputs for every possible input. You can also run the program to aid
@@ -128,6 +159,8 @@ in reversing and verify your results.
 simply a symbol, and its location can be found from the output of "is" "info
 symbols" (it is -1).
 
+* Verify solution
+
 Solution:
        | -5 if x = -1
        |  0 if x =  0
@@ -136,6 +169,11 @@ f(x) = | 97 if x = 65
        | -1  otherwise
 
 ==== crackme0x00a ====
+
+* Run radare2 -A ./crackme0x00a
+* pdf @ sym.main + analyze
+* iz / izz
+
 Now we'll try crackme0x00a, which is much easier. You can open in in radare2
 with "r2 -A crackme0x00a". The -A flag will automatically run "aaa" when the
 program is opened. A simple "pdf @ sym.main" reveals everything about the
@@ -146,11 +184,17 @@ strings" command. This lists all strings found in the executable sections of
 the binary, so strings that are only useful to the compiler/linker are left
 out (you can view all strings in the binary with "izz").
 
+* ps
+* axt
+
 You'll notice that the "iz" command lists the physical and virtual addresses of
 the strings as well as their contents. For purely instructional reasons, print
 the solution string using the "ps"/"print string" command. You can also view
 all places where the string is referenced in the code by searching for its
 location with the "axt"/"analyze cross-references to" command.
+
+* cp crackme0x00a crackme0x00a_patched
+* r2 -Aw crackme0x00a / oo+
 
 This crackme is already pretty disappointing, but with some patching we can
 ruin it completely. Let's make the program accept any password. First make a
@@ -162,6 +206,8 @@ code:
 
 test eax, eax
 jne 0x8048554
+
+* Overwrite cmp and jcc with nops
 
 Enter visual mode with "V". Instead of pressing "V" again to open the flow
 graph, press "p" to cycle through different views. We want the view of the code
@@ -179,17 +225,26 @@ instructions with "nop"s.
 Exit radare2 with q, and the newly patched program will accept any password.
 
 ==== crackme0x05 ====
+
 We'll go through one more crackme to gain confidence with this new tool, and
 then you'll get some to do on your own.
+
+* Run radare2 ./crackme0x05
+* View main + analyze
+* View check as a flow graph
 
 Open and analyze crackme0x05 with radare2, and print the disassembly of main().
 The program simply scans our password (unsafely!) and hands it off to check().
 Next view the disassembly of check(). This function is slightly more
 complicated, so view it as a flow graph.
 
+* afvn arg_8h input
+* analyze up to strlen() + jae
+* comment on failure block
+
 Since we know the only argument to check() is our input, we can change "arg_8h"
 to "input". Starting from the first block, we see that the program sets
-local_8h and local_ch to zero then calls strcmp() on our input. Specifically,
+local_8h and local_ch to zero then calls strlen() on our input. Specifically,
 we see the following construct:
 
 call sym.imp.strlen
@@ -204,6 +259,10 @@ skipped as long as local_ch < strlen(input). Looking at the branch where the
 jump is taken, we see that the program prints a failure message and then
 terminates. Lets take a note of this. Run "CC?" to see how to set a comment at
 the start of the block telling you that the check has failed.
+
+* A character is being moved into local_dh
+* local_ch is a counter
+* afvn local_ch i
 
 Now let's turn our attention to the other block. We see the following
 construct:
@@ -223,6 +282,11 @@ lowermost basic block in the flow graph, local_ch is incremented just before
 execution flows back up the chart. Give local_ch a more fitting name, like "i",
 and add a comment to this section of code.
 
+* Analyze call to sscanf(input+i, "%d", &local_4h)
+* afvn local_dh cur_char
+* afvn local_4h int_cur_char
+* comment sscanf(input+i, "%d", &local_4h)
+
 After the character is loaded into local_dh, the program begins creating a
 stack frame as follows:
 
@@ -237,16 +301,21 @@ to sscanf(), local_4h contains the integer value of input[i]. Give local_dh and
 local_4h more meaningful names, such as cur_char and int_cur_char,
 respectively, and add comments as you see fit.
 
+* afvn local_8h sum
+
 After after the call to sscanf(), we add int_cur_char to local_8h, which was
 one of the variables set to 0 at the beginning of the function. local_8h seems
 to be being used as a running sum. Give it a name that indicates this, like
 "sum". The sum is then compared to 0x10 at the end of the block.
 
-By looking at the flow chart we can see that the program increments i and
+By looking at the flow chart we can see that the program then increments i and
 continues to loop until either the sum is equal to 0x10 or there are no more
 characters remaining in the input. If we run out of characters the check fails.
 We can verify this by using radare2 as a debugger and watching the flow of
 execution ourselves.
+
+* Open in debug mode (ood)
+* break before sum is updated + pause at breakpoint
 
 Return to the radare2 shell and reopen the current file in debug mode with the
 "ood" command. Run "pdf @ sym.check" to view the fuction we're interested in.
@@ -257,6 +326,10 @@ following construct:
 lea eax, [ebp - sum]
 add dword [eax], edx
 
+* pxw @ebp-0x8 / pxw 4 @ebp-0x8
+* dc
+* repeat
+
 Let's set a breakpoint just before these lines are executed. The syntax to set
 a breakpoint is "db <addr>", which stands for "debug breakpoint <addr>". Set a
 breakpoint at the first line and run the program with "dc" ("debug continue").
@@ -265,6 +338,9 @@ notice that your location in the radare2 prompt will be the location of the
 breakpoint. From here, run "pxw @ebp-0x8" ("print hex word"). You can also run
 "pxw 4 @ebp-0x8" if you don't want to see as much output. From here, alternate
 running "dc" and "pxw 4 @ebp-0x8" to see the sum grow.
+
+* do restarts the program
+* reverse the call to sscanf() within parell() and crack the binary
 
 Run the "do" command to restart the binary. Now look back at the flow graph for
 check(). If we reach a point where the sum equals 0x10, the program calls
@@ -291,7 +367,7 @@ garbage value is added to the sum, and the check will almost surely fail.
 Now that you have some experience with a new tool, try cracking the level1,
 level2, and level3 binaries on your own.
 
-A few useful radare2 commands are listed below.
+Some useful radare2 commands:
 Shell mode:
 ?    - help
 aa   - analyze all functions + basic blocks
@@ -300,9 +376,15 @@ s    - seek
 afvn - rename argument or local variable
 pdf  - print disassembled function
 ps   - print string
+@ loc prefix -  run command from location loc
+is           -  "info symbols" display information on symbols
+iz / izz     -  "info strings" display strings in executable sections
+axt          -  "analyze references to" display references to location
+CC           -  set comment
+pxw          -  print hex words
 
 Visual mode:
-VV  - visual mode flow graph
+VV        - visual mode flow graph
   p       - cycle through views
   tab/TAB - select block
   HJKL    - move current block
@@ -319,6 +401,8 @@ w    - write to memory
 Debug mode:
 ood - reopen in debug mode
 db  - set breakpoint
+dc  - continue until next breakpoint
+do  - start over
 s   - step into
 S   - step over
 
@@ -326,6 +410,7 @@ https://github.com/pwntester/cheatsheets/blob/master/radare2.md
 http://security.cs.rpi.edu/courses/binexp-spring2015/challenges.zip
 
 ==== level1 ====
+
 This crackme calculates the xor of all the characters in the input and compares
 the result to 0x20.  You can't just use 0x20 as the password because it's a
 space in ascii, but it's relatively easy to come up with a string that will
@@ -333,6 +418,7 @@ work. Alternatively, you could just try random strings, as there are only
 2^8 = 256 possibilities for the result of the xor.
 
 ==== level2 ====
+
 This crackme calculates the product of all the characters in the input and
 compares the result to 3939343676. Some of the characters corresponding to the
 factors are not printable, so it's helpful to use a python script to generate
@@ -340,7 +426,11 @@ the correct input. The function to calculate the product has been xored with
 0xe0 and only becomes meaningful after it's "decrypted" when the program is
 begun, which makes static debugging nigh impossible.
 
+Redefine data by seeking there, entering visual mode, and pressing d to open
+the define menu. Then press f to define as a function.
+
 ==== level3 ====
+
 This crackme calculates the sum of all the characters in the input and compares
 the result to 3500, but it will reject any input that isn't 16 characters long.
 The function to compute the sum is "decrypted" at runtime, and ptrace() is
@@ -353,6 +443,10 @@ mode, bring the data in question to the top of the screen, and press "d" to
 define it as code (if radare2 mistakes code for a string) or a function.
 
 ==== Writing assembly ====
+
+* Motivate syscalls
+* man syscalls
+
 Our next task is to write programs in assembly language, but before that we
 have to talk about system calls, or syscalls for short. When we write program
 in assembly we don't have the glibc functions available to us, so we use
@@ -360,6 +454,8 @@ syscalls instead. From the syscalls man page (man syscalls): "Syscalls are the
 fundamental interface between an application and the Linux kernel. System calls
 are generally not invoked directly, but rather via wrapper functions in glibc 
 (or perhaps some other library)."
+
+* man 2 write
 
 printf() is a wrapper function for the write() syscall. You can see
 this by running strace on any of the programs using printf() we've used so far.
@@ -374,6 +470,7 @@ Arguments to the syscall are read from ebx, ecx, edx, esi, and edi in that
 order. The numbers for each syscall in x86 can be found in unistd_32.h. On your
 virutal machines, the full path is:
 
+/usr/src/linux-headers-4.4.0-57-generic/arch/x86/include/generated/uapi/asm/unistd_32.h
 /usr/src/linux-headers-4.4.0-53-generic/arch/x86/include/generated/uapi/asm/unistd_32.h
 
 Our first goal is to write an assembly program that can successfully exit after
@@ -476,8 +573,41 @@ the line where it's written. The last line uses this fact to calculate the
 length of the string to be printed. Do you have a guess as to why the 0x0a byte
 as appended to the end of the message string (it's a newline)?
 
-Now that you've seen a few assembly programs, try writing a program on your
-own. The oneko command makes a cat follow your cursor, and you can add flags to
+Now that you've gained some familiarity with nasm, lets try writing code to
+spawn a shell. But this time we'll do it with the additional constraint that
+all necessary data must be pushed onto the stack at runtime. The syntax for
+pushing onto the stack is simply "push <word>". You'll have to use this to
+write the strings you need to memory. Remember to debug with gdb!
+
+Solution: The goal is to call
+execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+
+global _start
+
+section .text
+; execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+_start:
+    ; write "/bin/bash", 0x0 to the stack
+    push 0x00000068    ;push "h000"
+    push 0x7361622f    ;push "/bas"
+    push 0x6e69622f    ;push "/bin"
+    mov ebx, esp       ;ebx points to "/bin/bash"
+
+    push 0x00000000    ;push null pointer
+    push ebx           ;push address of "/bin/bash"
+    mov ecx, esp       ;ecx points to ["bin/bash", 0x0]
+
+    lea edx, [ecx+0x4] ;edx points to a null pointer
+    mov eax, 0xb       ;execve() syscall
+    int 0x80
+
+    ; exit
+    mov eax, 0x1
+    mov ebx, 0x0
+    int 0x80
+
+Now that you've seen a few assembly programs, try writing a program for fun.
+The oneko command makes a cat follow your cursor, and you can add flags to
 change it into other things. Write an assembly program to make something other
 than the default cat chase your cursor. You will have to add "DISPLAY=:0" to
 the environment. You may find it helpful to look at the man pages for the
@@ -513,38 +643,5 @@ argv: dd arg1, arg2, 0x00000000
 
 env1: db "DISPLAY=:0", 0x00
 envp: dd env1, 0x00000000
-
-Now that you've gained some familiarity with nasm, lets try writing code to
-spawn a shell. But this time we'll do it with the additional constraint that
-all necessary data must be pushed onto the stack at runtime. The syntax for
-pushing onto the stack is simply "push <word>". You'll have to use this to
-write the strings you need to memory. Remember to debug with gdb!
-
-Solution: The goal is to call
-execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
-
-global _start
-
-section .text
-; execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
-_start:
-    ; write "/bin/bash", 0x0 to the stack
-    push 0x00000068    ;push "h000"
-    push 0x7361622f    ;push "/bas"
-    push 0x6e69622f    ;push "/bin"
-    mov ebx, esp       ;ebx points to "/bin/bash"
-
-    push 0x00000000    ;push null pointer
-    push ebx           ;push address of "/bin/bash"
-    mov ecx, esp       ;ecx points to ["bin/bash", 0x0]
-
-    lea edx, [ecx+0x4] ;edx points to a null pointer
-    mov eax, 0xb       ;execve() syscall
-    int 0x80
-
-    ; exit
-    mov eax, 0x1
-    mov ebx, 0x0
-    int 0x80
 
 http://www.nasm.us/doc/nasmdoc3.html#section-3.5

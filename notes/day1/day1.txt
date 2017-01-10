@@ -509,5 +509,8 @@ watch gdb turn into a graphical debugger before your eyes!
 
 From here, we'll try some crackmes.
 
-
 https://github.com/snare/voltron
+
+*Encourage students to read up on linking and virtual memory. The link below is
+a good exercise to understand dynamic linking.
+https://rafalcieslak.wordpress.com/2013/04/02/dynamic-linker-tricks-using-ld_preload-to-cheat-inject-features-and-investigate-programs/
