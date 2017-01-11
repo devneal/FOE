@@ -27,6 +27,7 @@ Keertan Kini [krkini16@mit.edu]
 Yuancheng Yu [ycyu@mit.edu]
 James Minor [jcminor@mit.edu]
 Brian M Axelrod [baxelrod@mit.edu]
+Raphael Pestourie [rpestour@mit.edu]
 
 Requested Materials:
 Ryan J Fish [fishr@mit.edu]
