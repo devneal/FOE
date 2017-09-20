@@ -1,2 +1,2 @@
 # REFE
-Materials for the IAP 2017 Reverse Engineering for Exploitation course
+Materials for the IAP 2018 Reverse Engineering for Exploitation course
