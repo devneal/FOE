@@ -1,4 +1,0 @@
-disp/5i $pc
-disp/12xw $sp
-b main
-r < input.txt
