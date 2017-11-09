@@ -1,9 +1,14 @@
 # REFE
 Materials for the IAP 2018 Reverse Engineering for Exploitation course.
 
+## TODO
+
+* Rewrite challenges (and solutions) for 64-bit
+* Restructure notes to match new schedule
+* Laredo VMs / docker container for each student?
+
 ## Schedule
-1. Language of Linux
-    * C Primer
+1. Linux, ELF, and RE
     * LD_PRELOAD / LD_LIBRARY_PATH (?)
     * Assembly Primer (reading only)
         * Registers
@@ -27,8 +32,14 @@ Materials for the IAP 2018 Reverse Engineering for Exploitation course.
         * x
         * nexti
         * stepi
-        * voltron
-2. Various crackmes
+        * pwndbg / voltron
+    * pwntools
+        * u64/p64
+        * process / remote
+        * read / recvuntil / readline
+        * send / sendline
+        * interactive
+        * gdb attach
     * crackmes
         * tut0-func (functions/basics)
         * crackme0x00a (strings/modification)
@@ -36,22 +47,21 @@ Materials for the IAP 2018 Reverse Engineering for Exploitation course.
         * level1 crackme (xor password)
         * level2 crackme (self-modification + product password)
         * level3 crackme (anti-debugging + self-modification + sum password)
-    * Programming in Assembly
-        * exit
-        * helloworld
-        * oneko (if we have time)
-        * bash shell
-3. Exploitation I
+2. Fundamentals of PWN
     * Overwriting Local Variables
     * Overwriting the Return Address
     * Shellcoding + NOP sled (+ shellcode env var?)
     * Return-to-libc
+3. DEP, ROP, and ASLR
     * Return-Oriented Programming
-4. Exploitation II
-    * Format String Corruption
-    * Format String GOT/PLT Overwrite
-    * Heap Vulnerabilities
-    * Mitigation Techniques
-5. Competition / Talk
+    * one_gadget
+    * DEP
+    * ASLR
+4. Stack Canaries, GOT/PLT, RELRO, PIE
+    * Stack Canaries
+    * GOT/PLT Overwrite
+    * RELRO
+    * PIE
+5. Miscellaneous
     * Half-day competition (1 challenge)
     * Talk by Andy Sellars (?)
