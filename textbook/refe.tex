@@ -1,0 +1,41 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage[defaultmono]{droidmono}
+\lstset{basicstyle=\ttfamily\small,breaklines=true}
+\newtheorem{exmp}{Example}[section]
+
+\author{Devin Neal}
+
+\begin{document}
+
+\tableofcontents
+\newpage
+
+% bits, bytes, words, dwords, qwords, binary, hex, 2's complement, endianness
+\section{A Crash Course on Computers}
+\input{computer_background}
+
+% x86, x86-64, registers, elfs, asm, stack, heap, plt, got, gdb
+\section{Understanding the Playing Field}
+\input{binaries}
+
+% pwntools + pwndbg
+\section{Tools of the Trade}
+\input{tools}
+
+% crackmes
+\section{Reverse Engineering}
+
+% bofs, rops
+\section{Exploiting the Stack}
+\input{stack_exploitation}
+
+\section{Exploiting the Heap}
+
+% find vtables in .rodata
+\section{C++}
+
+\end{document}

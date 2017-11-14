@@ -1,0 +1,815 @@
+\subsection{x86 and x86-64}
+x86 CPUs have eight general-purpose registers. They are called \texttt{eax},
+\texttt{ecx}, \texttt{edx}, \texttt{ebx}, \texttt{esp}, \texttt{ebp},
+\texttt{esi}, \texttt{edi}. There are two other registers, \texttt{eip}, and
+\texttt{eflags}, which have specific uses and cannot be written to directly.
+Although each general-purpose register can technically be used for anything,
+they are conventionally used for specific purposes.
+
+\begin{itemize}
+    \item \texttt{eax} (the accumulator) is used to store function return values 
+    \item \texttt{esp} (the stack pointer) points to the top (lowest address) of
+        the current stack frame 
+    \item \texttt{ebp} (the base pointer) points to the base (highest) address
+        of the current stack frame 
+    \item \texttt{eip} (the instruction pointer) points to the next instruction
+        that the CPU will execute. Each time an instruction is executed, the
+        \texttt{eip} is set to the next instruction.
+    \item \texttt{eflags} (the flags register) contains several single-bit flags
+        that describe the state of the CPU
+\end{itemize}
+
+% TODO: add an image to demonstrate this
+Some parts of each register can be manipulated independently of others. For
+example, the lower 16 bits of \texttt{eax} are referred to as \texttt{ax}. The
+lower 8 bits of \texttt{ax} are referred to as \texttt{al}, and the higher 8
+bits of \texttt{ax} are referred to as \texttt{ah}. There is a similar naming
+convention for \texttt{ecx}, \texttt{edx}, and \texttt{ebx}.
+
+x86-64 extends the x86 registers mentioned above to 64 bits, and in doing so
+replaces the `e' prefixes with `r' prefixes (i.e. \texttt{rax}, \texttt{rflags},
+etc.). It also adds eight more general-purpose registers (\texttt{r8} through
+\texttt{r15}), and eight 128-bit XMM registers.
+
+% basic assembly
+\subsection{Assembly, the Elven Tongue}
+Although we write typically write programs in C, a CPU can only execute
+instructions written in machine code. Machine code is unfortunately rather
+difficult to for humans to read, so we instead use assembly, a language whose
+instructions are one-to-one with machine code. Being comfortable reading
+assembly will be invaluable while trying to understand and exploit programs, so
+it will be useful to learn a few of the more common instructions.
+
+\subsubsection{Intel vs. AT\&T}
+Assembly can be written in one of two ways: intel syntax and at\&t syntax. Both
+have the same instructions and convey the same information, but most people find
+intel syntax a little bit easier to read. For the purposes of this book, all
+assembly will be written in intel syntax. If you're ever unsure what syntax your
+assembly is written in, just look for the \$ and \% characters that are heavily
+used in at\&t syntax.
+
+\subsubsection{Common Assembly Instructions}
+Instructions in intel syntax are typically have one of two forms:
+\texttt{<instruction> <destination> <source>} or \texttt{<instruction>
+<argument>}. A few of the most common assembly instructions are listed below.
+
+\begin{itemize}
+    \item \texttt{mov <destination> <source>} - write data specified by source
+        to destination
+    \item \texttt{push <data>} - decrement the stack pointer, then write the
+        specified data to the top of the stack
+    \item \texttt{pop <data>} - write data at the top of the stack to argument,
+        then increment the stack pointer
+    \item \texttt{call <address>} - push the address of the next instruction,
+        then move address into rip
+    \item \texttt{ret} - move the address at the top of the stack into rip,
+        then increment the stack pointer
+    \item \texttt{nop} - do absolutely nothing
+\end{itemize}
+
+There are several assembly instructions to perform arithmetic and bitwise
+operations on data.
+
+% TODO explain ^ and & in an aside, explain rdx:rax
+\begin{itemize}
+    \item \texttt{add <arg1> <arg2>} - writes arg1 + arg2 to arg1
+    \item \texttt{sub <arg1> <arg2>} - writes arg1 - arg2 to arg1
+    \item \texttt{xor <arg1> <arg2>} - writes arg1 ^ arg2 to arg1
+    \item \texttt{and <arg1> <arg2>} - writes arg1 & arg2 to arg1
+    \item \texttt{imul <arg1> <arg2>} - writes arg1 * arg2 to arg1
+    \item \texttt{idiv <arg>} - writes rax / arg to rdx:rax (or architecture
+        equivalent)
+\end{itemize}
+
+Finally, there are a family of jump instructions that deserve special attention.
+The \texttt{jmp} instruction simply redirects execution to the address specified
+by its argument. Each of the others checks \texttt{rflags} and will only
+redirect execution if the flags meet a certain condition.
+
+\begin{itemize}
+    \item \texttt{jmp} - unconditional jump
+    \item \texttt{je} - jump if equal (to zero)
+    \item \texttt{jne} - jump if not equal (to zero)
+    \item \texttt{jl} - jump if less (than zero)
+    \item \texttt{jle} - jump if less than or equal (to zero)
+    \item \texttt{jg} - jump if greater (than zero)
+    \item \texttt{jge} - jump if greater than or equal (to zero)
+    \item \texttt{cmp} - perform subtraction, but ignore the result (only set
+        \texttt{rflags})
+    \item \texttt{test} - perform and, but ignore the result (only set
+        \texttt{rflags})
+\end{itemize}
+
+When an assembly instruction references memory, it must specify both the
+location of size of that memory. The intel syntax for addressing memory is
+\texttt{<size> PTR [<addr>]}, where the size is one of the following:
+\begin{itemize}
+    \item \texttt{BYTE} - 1 byte
+    \item \texttt{WORD} - 2 bytes
+    \item \texttt{DWORD} - 4 bytes
+    \item \texttt{QWORD} - 8 bytes
+\end{itemize}
+
+% TODO: add simple assembly examples
+
+This is commonly used with the \texttt{mov} instruction, i.e. \texttt{mov
+QWORD PTR [rbp-0x8],rax}. 
+
+% variables, stack frames, heap basics
+% TODO: include stack frame diagram
+\subsection{The Stack and Heap}
+The most important use of the stack is in handling nested function calls. In
+order to make this work seamlessly, the functions follow a calling convention
+which outlines instructions for both the calling function (the caller) and the
+called function (the callee). The calling convention is as follows:
+
+The caller shall:
+\begin{enumerate}
+    \item Prepare the callee's arguments by either loading them into registers
+        (x86-64) or pushing them onto the stack in reverse order (x86)
+    \item Execute the \texttt{call} instruction to jump to the new function and
+        push the address of the next instruction onto the stack
+    \item After the callee returns, clear the stack of any callee arguments
+\end{enumerate}
+
+At the \emph{start} of execution, the callee shall:
+\begin{enumerate}
+    \item Push the caller's base pointer onto the stack
+    \item Move the base pointer to point to the caller's saved base pointer
+    \item Subtract from the base pointer to make room for any local variables
+\end{enumerate}
+
+At the \emph{end} of execution, the callee shall:
+\begin{enumerate}
+    \item Leave the return value in the accumulator
+    \item Move the stack pointer to point to the caller's saved base pointer
+    \item Restore the caller's base pointer by popping if off of the stack
+    \item Execute the \texttt{ret} instruction to return control to the caller
+\end{enumerate}
+
+Note that the callee essentially undoes everything it did to build its new stack
+frame after it finishes execution. This way the caller can continue execution
+after finishing the calling convention with it's stack frame intact.
+Additionally, this calling convention allows for the callee to call other
+functions during it's execution, since the stack frames they build will be
+popped off the stack after they terminate. This means that we can nest function
+calls indefinitely as long as there is room on the stack to keep building stack
+frames!
+
+You now know enough to understand a basic program written in assembly. Take this
+one, for example.
+
+\begin{lstlisting}
+// elf.c 
+#include <stdio.h>
+
+int main(void) {
+    int num;
+    printf("ELF example\n");
+    scanf("%d\n", &num);
+    return 0;
+}
+\end{lstlisting}
+
+If you to compile this program with \texttt{gcc -o elf elf.c}, you will create
+a new ELF file called \texttt{elf}.
+
+\begin{lstlisting}
+> gcc -o elf elf.c 
+> ls -l elf
+-rwxrwxr-x 1 devneal devneal 8720 Nov  9 11:28 elf
+> 
+\end{lstlisting}
+
+We can use a tool called \texttt{objdump} to read a compiled program's assembly.
+Run \texttt{objdump -M intel -d elf} to see the disassembled program's machine
+code.
+
+\begin{lstlisting}
+00000000004005f6 <main>:
+  4005f6:       55                      push   rbp
+  4005f7:       48 89 e5                mov    rbp,rsp
+  4005fa:       48 83 ec 10             sub    rsp,0x10
+  4005fe:       64 48 8b 04 25 28 00    mov    rax,QWORD PTR fs:0x28
+  400605:       00 00 
+  400607:       48 89 45 f8             mov    QWORD PTR [rbp-0x8],rax
+  40060b:       31 c0                   xor    eax,eax
+  40060d:       bf d4 06 40 00          mov    edi,0x4006d4
+  400612:       e8 99 fe ff ff          call   4004b0 <puts@plt>
+  400617:       48 8d 45 f4             lea    rax,[rbp-0xc]
+  40061b:       48 89 c6                mov    rsi,rax
+  40061e:       bf e0 06 40 00          mov    edi,0x4006e0
+  400623:       b8 00 00 00 00          mov    eax,0x0
+  400628:       e8 b3 fe ff ff          call   4004e0 <__isoc99_scanf@plt>
+  40062d:       b8 00 00 00 00          mov    eax,0x0
+  400632:       48 8b 55 f8             mov    rdx,QWORD PTR [rbp-0x8]
+  400636:       64 48 33 14 25 28 00    xor    rdx,QWORD PTR fs:0x28
+  40063d:       00 00 
+  40063f:       74 05                   je     400646 <main+0x50>
+  400641:       e8 7a fe ff ff          call   4004c0 <__stack_chk_fail@plt>
+  400646:       c9                      leave  
+  400647:       c3                      ret    
+  400648:       0f 1f 84 00 00 00 00    nop    DWORD PTR [rax+rax*1+0x0]
+  40064f:       00
+\end{lstlisting}
+
+The first three instructions are the function prologue, creating a new stack
+frame.
+\begin{lstlisting}
+4005f6:       55                      push   rbp
+4005f7:       48 89 e5                mov    rbp,rsp
+4005fa:       48 83 ec 10             sub    rsp,0x10
+\end{lstlisting}
+
+The next two instructions may seem strange. The program reads a \texttt{QWORD}
+from somewhere into \texttt{rax}, then stores that values on the stack at
+\texttt{rbp-0x8}. It then uses a clever trick to zero out \texttt{eax}.
+\begin{lstlisting}
+4005fe:       64 48 8b 04 25 28 00    mov    rax,QWORD PTR fs:0x28
+400605:       00 00 
+400607:       48 89 45 f8             mov    QWORD PTR [rbp-0x8],rax
+40060b:       31 c0                   xor    eax,eax
+\end{lstlisting}
+
+Next is a call to \texttt{puts()}. We can see the first argument (presumably a
+format string) being moved into \texttt{edi} preceding the call.
+\begin{lstlisting}
+40060d:       bf d4 06 40 00          mov    edi,0x4006d4
+400612:       e8 99 fe ff ff          call   4004b0 <puts@plt>
+\end{lstlisting}
+
+Now there's a call to \texttt{scanf()}. Since we called \texttt{scanf()} with
+two arguments, but \texttt{rdi} and \texttt{rsi} are set before the call. It
+then moves \texttt{0x0} into \texttt{eax} in order to return 0.
+
+\begin{lstlisting}
+400617:       48 8d 45 f4             lea    rax,[rbp-0xc]
+40061b:       48 89 c6                mov    rsi,rax
+40061e:       bf e0 06 40 00          mov    edi,0x4006e0
+400623:       b8 00 00 00 00          mov    eax,0x0
+400628:       e8 b3 fe ff ff          call   4004e0 <__isoc99_scanf@plt>
+40062d:       b8 00 00 00 00          mov    eax,0x0
+\end{lstlisting}
+
+This is followed by a few more instructions involving the mysterious value at
+\texttt{rbp-0x8}. Their purpose can be ignored for now, but we can tell that the
+program is comparing the value on the stack to the one that was originally
+placed there.
+\begin{lstlisting}
+400632:       48 8b 55 f8             mov    rdx,QWORD PTR [rbp-0x8]
+400636:       64 48 33 14 25 28 00    xor    rdx,QWORD PTR fs:0x28
+40063d:       00 00 
+40063f:       74 05                   je     400646 <main+0x50>
+400641:       e8 7a fe ff ff          call   4004c0 <__stack_chk_fail@plt>
+\end{lstlisting}
+
+Last, the program exits by executing the function epilogue followed by the
+\texttt{ret} instruction.
+\begin{lstlisting}
+400646:       c9                      leave  
+400647:       c3                      ret    
+\end{lstlisting}
+
+% memory segmentation, readelf, objdump
+% TODO: add diagram
+\subsection{Memory Layout}
+Memory in a running program can be divided into sections, each of which is used
+for a specific purpose. They are, in order from lower addresses to higher
+addresses, \texttt{.text}, \texttt{.data}, \texttt{.bss}, \texttt{heap}, and
+\texttt{stack}.
+
+\begin{itemize}
+    \item The \texttt{.text} section stores the program's executable code and is
+never writable.
+    \item The \texttt{.data} section stores any static or global variables (in C
+terminology) that are initialized in the source code and writable.
+    \item The \texttt{.bss} secition stores any static or global variables that
+are initialized to zero or not explicitly initialized in the source code.
+    \item The \texttt{heap} is a section of memory which can be dynamically
+allocated at runtime. The heap grows downward, toward higher memory addresses.
+    \item The \texttt{stack} is a section of memory which is used to store
+local variables and handle nested function calls. The stack grows upward, toward
+lower memory addresses.
+\end{itemize}
+
+% symbols, sections, and segments
+\subsection{ELF Anatomy}
+ELF, or Executable and Linkable Format, is the most common type of executable
+for Linux systems. Whenever you compile a program with `gcc`, the result is and
+ELF binary.
+
+\begin{lstlisting}
+> file elf
+elf: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 2.6.32, BuildID[sha1]=6dc45433a562bb0eb99f962510ad71b3da43095d, not stripped
+> 
+\end{lstlisting}
+
+The output of the \texttt{file} command indicates that this ELF binary was
+compiled for a litte-endian (Least Significant Byte) x86-64 architecture. We can
+see more information with the \texttt{readelf} command.
+
+\begin{lstlisting}
+> readelf --file-header elf
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x400430
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          6616 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         9
+  Size of section headers:           64 (bytes)
+  Number of section headers:         31
+  Section header string table index: 28
+> 
+\end{lstlisting}
+
+We don't need most of this information right now, but there are a few
+interesting things. The "Magic" field indicates the first few bytes in the file,
+which always starts with \texttt{7f} followed by the ascii representation of the
+characters `E' `L' `F'. The "Class" field is \texttt{ELF64}, indicating that
+this executable was compiled for a 64-bit architecture, and the "Data" field
+shows that the executable uses little-endian byte order. \texttt{readelf} is a
+useful tool for retreiving information about binaries, so it's worth getting
+familiar with it.
+
+\subsubsection{Symbols, Sections, and Segments}
+ELF binaries can be organized into \emph{symbols}, \emph{sections}, and
+\emph{segments}. This grouping is heirarchical: segments are groups of sections
+and each section contains several symbols. Symbols are simply names for memory
+locations. Each symbol is identified by it's location in memory and it's size.
+We can view an ELF file's symbols by passing the \texttt{--symbols} flag to
+\texttt{readelf}.
+
+\begin{lstlisting}
+> readelf --symbols elf | tail -n 10
+    57: 00000000004005c0     4 OBJECT  GLOBAL DEFAULT   16 _IO_stdin_used
+    58: 0000000000400540   101 FUNC    GLOBAL DEFAULT   14 __libc_csu_init
+    59: 0000000000601040     0 NOTYPE  GLOBAL DEFAULT   26 _end
+    60: 0000000000400430    42 FUNC    GLOBAL DEFAULT   14 _start
+    61: 0000000000601038     0 NOTYPE  GLOBAL DEFAULT   26 __bss_start
+    62: 0000000000400526    21 FUNC    GLOBAL DEFAULT   14 main
+    63: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _Jv_RegisterClasses
+    64: 0000000000601038     0 OBJECT  GLOBAL HIDDEN    25 __TMC_END__
+    65: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+    66: 00000000004003c8     0 FUNC    GLOBAL DEFAULT   11 _init
+> 
+\end{lstlisting}
+
+Here we can see that the symbol for \texttt{main()} is located at address
+\texttt{0x400526} and has a size of 21 bytes. The compiler adds many more
+symbols for the linker to use.
+
+Each section of the binary is used for a different purpose. We've already seen
+the  \texttt{.text} section, which stores machine code, the \texttt{.data}
+section, which stores initialized global or static variables, and the
+\texttt{.bss} section, which stores uninitialized global or static variables. To
+list all of the sections in an ELF binary, pass the \texttt{--sections} flag to
+\texttt{readelf}.
+
+\begin{lstlisting}
+> readelf --sections elf
+There are 31 section headers, starting at offset 0x19d8:
+
+Section Headers:
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [ 0]                   NULL             0000000000000000  00000000
+       0000000000000000  0000000000000000           0     0     0
+  [ 1] .interp           PROGBITS         0000000000400238  00000238
+       000000000000001c  0000000000000000   A       0     0     1
+  [ 2] .note.ABI-tag     NOTE             0000000000400254  00000254
+       0000000000000020  0000000000000000   A       0     0     4
+  [ 3] .note.gnu.build-i NOTE             0000000000400274  00000274
+       0000000000000024  0000000000000000   A       0     0     4
+  [ 4] .gnu.hash         GNU_HASH         0000000000400298  00000298
+       000000000000001c  0000000000000000   A       5     0     8
+  [ 5] .dynsym           DYNSYM           00000000004002b8  000002b8
+       0000000000000060  0000000000000018   A       6     1     8
+  [ 6] .dynstr           STRTAB           0000000000400318  00000318
+       000000000000003d  0000000000000000   A       0     0     1
+  [ 7] .gnu.version      VERSYM           0000000000400356  00000356
+       0000000000000008  0000000000000002   A       5     0     2
+  [ 8] .gnu.version_r    VERNEED          0000000000400360  00000360
+       0000000000000020  0000000000000000   A       6     1     8
+  [ 9] .rela.dyn         RELA             0000000000400380  00000380
+       0000000000000018  0000000000000018   A       5     0     8
+  [10] .rela.plt         RELA             0000000000400398  00000398
+       0000000000000030  0000000000000018  AI       5    24     8
+  [11] .init             PROGBITS         00000000004003c8  000003c8
+       000000000000001a  0000000000000000  AX       0     0     4
+  [12] .plt              PROGBITS         00000000004003f0  000003f0
+       0000000000000030  0000000000000010  AX       0     0     16
+  [13] .plt.got          PROGBITS         0000000000400420  00000420
+       0000000000000008  0000000000000000  AX       0     0     8
+  [14] .text             PROGBITS         0000000000400430  00000430
+       0000000000000182  0000000000000000  AX       0     0     16
+  [15] .fini             PROGBITS         00000000004005b4  000005b4
+       0000000000000009  0000000000000000  AX       0     0     4
+  [16] .rodata           PROGBITS         00000000004005c0  000005c0
+       0000000000000010  0000000000000000   A       0     0     4
+  [17] .eh_frame_hdr     PROGBITS         00000000004005d0  000005d0
+       0000000000000034  0000000000000000   A       0     0     4
+  [18] .eh_frame         PROGBITS         0000000000400608  00000608
+       00000000000000f4  0000000000000000   A       0     0     8
+  [19] .init_array       INIT_ARRAY       0000000000600e10  00000e10
+       0000000000000008  0000000000000000  WA       0     0     8
+  [20] .fini_array       FINI_ARRAY       0000000000600e18  00000e18
+       0000000000000008  0000000000000000  WA       0     0     8
+  [21] .jcr              PROGBITS         0000000000600e20  00000e20
+       0000000000000008  0000000000000000  WA       0     0     8
+  [22] .dynamic          DYNAMIC          0000000000600e28  00000e28
+       00000000000001d0  0000000000000010  WA       6     0     8
+  [23] .got              PROGBITS         0000000000600ff8  00000ff8
+       0000000000000008  0000000000000008  WA       0     0     8
+  [24] .got.plt          PROGBITS         0000000000601000  00001000
+       0000000000000028  0000000000000008  WA       0     0     8
+  [25] .data             PROGBITS         0000000000601028  00001028
+       0000000000000010  0000000000000000  WA       0     0     8
+  [26] .bss              NOBITS           0000000000601038  00001038
+       0000000000000008  0000000000000000  WA       0     0     1
+  [27] .comment          PROGBITS         0000000000000000  00001038
+       0000000000000034  0000000000000001  MS       0     0     1
+  [28] .shstrtab         STRTAB           0000000000000000  000018ca
+       000000000000010c  0000000000000000           0     0     1
+  [29] .symtab           SYMTAB           0000000000000000  00001070
+       0000000000000648  0000000000000018          30    47     8
+  [30] .strtab           STRTAB           0000000000000000  000016b8
+       0000000000000212  0000000000000000           0     0     1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), l (large)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)
+> 
+\end{lstlisting}
+
+We can see from the output above that the \texttt{.text} section is not writable
+(as expected), but the \texttt{.data} and \texttt{.bss} sections are. Among the
+new sections are \texttt{.plt} and \texttt{.got.plt}, both of which are
+important for linking.
+
+We can view the binary's segments with \texttt{readelf --segments}.
+
+\begin{lstlisting}
+> readelf --segments elf
+
+Elf file type is EXEC (Executable file)
+Entry point 0x400430
+There are 9 program headers, starting at offset 64
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  PHDR           0x0000000000000040 0x0000000000400040 0x0000000000400040
+                 0x00000000000001f8 0x00000000000001f8  R E    8
+  INTERP         0x0000000000000238 0x0000000000400238 0x0000000000400238
+                 0x000000000000001c 0x000000000000001c  R      1
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+  LOAD           0x0000000000000000 0x0000000000400000 0x0000000000400000
+                 0x00000000000006fc 0x00000000000006fc  R E    200000
+  LOAD           0x0000000000000e10 0x0000000000600e10 0x0000000000600e10
+                 0x0000000000000228 0x0000000000000230  RW     200000
+  DYNAMIC        0x0000000000000e28 0x0000000000600e28 0x0000000000600e28
+                 0x00000000000001d0 0x00000000000001d0  RW     8
+  NOTE           0x0000000000000254 0x0000000000400254 0x0000000000400254
+                 0x0000000000000044 0x0000000000000044  R      4
+  GNU_EH_FRAME   0x00000000000005d0 0x00000000004005d0 0x00000000004005d0
+                 0x0000000000000034 0x0000000000000034  R      4
+  GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x0000000000000000 0x0000000000000000  RW     10
+  GNU_RELRO      0x0000000000000e10 0x0000000000600e10 0x0000000000600e10
+                 0x00000000000001f0 0x00000000000001f0  R      1
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     
+   01     .interp 
+   02     .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt .init .plt .plt.got .text .fini .rodata .eh_frame_hdr .eh_frame 
+   03     .init_array .fini_array .jcr .dynamic .got .got.plt .data .bss 
+   04     .dynamic 
+   05     .note.ABI-tag .note.gnu.build-id 
+   06     .eh_frame_hdr 
+   07     
+   08     .init_array .fini_array .jcr .dynamic .got 
+> 
+\end{lstlisting}
+
+This shows us the segments, their permissions, and which sections are contained
+in each segment. For example, the \texttt{.data} and \texttt{.bss} sections are
+located in the third segment, which has a type of \texttt{LOAD}. We also see
+that this segment has both read and write permissions.
+
+% Shared libraries
+\subsubsection{PLT and GOT}
+One of the most useful attributes of ELF binaries is the fact that they can
+use each other's data through a process called linking. Although linking is
+conceptually simple, it's implementation is rather complex due to the fact that
+shared libraries must function properly regardless of where they are loaded into
+memory. This means that ELF binaries need some way to determine the locations of
+their shared library functions at runtime. ELF binaries use two data structures
+to achieve this - the Procedure Linkage Table (PLT) and Global Offset Table
+(GOT).
+
+The PLT is a list of code stubs which are called in place of shared library
+functions, and the GOT is a list of pointers where the PLT will redirect
+execution. Each shared library function in the ELF has an entry in both the PLT
+and the GOT. The first entry in the PLT is used to call the resolver, and each
+following entry is used to call a shared library function. Each PLT entry other
+than the first consists of a jump to the corresponding address in the GOT, a
+push onto the stack to prepare the resolver, and a jump to the resolver. When
+the program is first loaded, each shared function's GOT entry points back to the
+PLT instructions to prepare and call the resolver. When the function is first
+called, the resolver will find the address of the function in libc (or other
+library), write the address to the GOT, and call the function. The next time the
+function is called, the PLT will redirect execution to the library code, so the
+resolution is only performed once.
+
+% gdb
+\subsection{Stepping through with GDB}
+We can use a debugger to step through an ELF file's execution one instruction at
+a time, inspecting and modifying its data as we please. This is a powerful tool
+for learning about a new executable. We're going to use the GNU debugger (GDB),
+since it's widely available and very powerful. To start debugging a program, run
+gdb <program>. Not much will happen, since gdb is run only through the command
+line.
+
+\begin{lstlisting}
+> gdb -nh elf
+GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5) 7.11.1
+Copyright (C) 2016 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from elf...(no debugging symbols found)...done.
+(gdb) 
+\end{lstlisting}
+
+It's useful to have a few survival gdb commands to get started. These can get
+you pretty far:
+
+\begin{itemize}
+    \item help - get information on how to use a command
+    \item disassemble - show disassembly of a function
+    \item break - set a breakpoint
+    \item run - run the program from the beginning
+    \item where - display your current location
+    \item info registers - display register status
+    \item x - examine memory
+    \item display - display memory at each breakpoint
+    \item nexti - execute an instruction without following jumps / calls
+    \item stepi - execute an instruction following jumps / calls
+    \item continue - resume execution from a breakpoint
+\end{itemize}
+
+If you type part of a command and press tab twice, \texttt{gdb} will suggest
+ways to finish the command. If there is only one way to complete the command you
+\emph{could} press tab to finish the command, but \texttt{gdb} will actually
+execute the completed command automatically. This walkthrough will use the full
+commands so that you can see them, but as you use the commands more, you'll want
+to start using the abbreviated versions.
+
+To start, we can view the disassembly of \texttt{main()} by running
+\texttt{disassemble main}. However, by default this will display the assembly in
+att syntax. To switch to intel syntax, run \texttt{set disassembly intel}.
+
+\begin{lstlisting}
+(gdb) set disassembly-flavor intel
+(gdb) disassemble main
+Dump of assembler code for function main:
+   0x00000000004005f6 <+0>:	push   rbp
+   0x00000000004005f7 <+1>:	mov    rbp,rsp
+   0x00000000004005fa <+4>:	sub    rsp,0x10
+   0x00000000004005fe <+8>:	mov    rax,QWORD PTR fs:0x28
+   0x0000000000400607 <+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x000000000040060b <+21>:	xor    eax,eax
+   0x000000000040060d <+23>:	mov    edi,0x4006d4
+   0x0000000000400612 <+28>:	call   0x4004b0 <puts@plt>
+   0x0000000000400617 <+33>:	lea    rax,[rbp-0xc]
+   0x000000000040061b <+37>:	mov    rsi,rax
+   0x000000000040061e <+40>:	mov    edi,0x4006e0
+   0x0000000000400623 <+45>:	mov    eax,0x0
+   0x0000000000400628 <+50>:	call   0x4004e0 <__isoc99_scanf@plt>
+   0x000000000040062d <+55>:	mov    eax,0x0
+   0x0000000000400632 <+60>:	mov    rdx,QWORD PTR [rbp-0x8]
+   0x0000000000400636 <+64>:	xor    rdx,QWORD PTR fs:0x28
+   0x000000000040063f <+73>:	je     0x400646 <main+80>
+   0x0000000000400641 <+75>:	call   0x4004c0 <__stack_chk_fail@plt>
+   0x0000000000400646 <+80>:	leave  
+   0x0000000000400647 <+81>:	ret    
+End of assembler dump.
+(gdb) 
+\end{lstlisting}
+
+To pause execution at the start of \texttt{main()}, we'll first set a breakpoint
+there, then run the program.
+
+\begin{lstlisting}
+(gdb) break main
+Breakpoint 1 at 0x4005fa
+(gdb) run
+Starting program: /home/devneal/Security/REFE/textbook/elf 
+
+Breakpoint 1, 0x00000000004005fa in main ()
+(gdb) 
+\end{lstlisting}
+
+From here we can verify our location with the \texttt{where} and \texttt{info
+registers} commands. Since we only need to see the location of \texttt{rip}, we
+can use \texttt{info register rip} to see it exclusively.
+
+\begin{lstlisting}
+(gdb) where
+#0  0x00000000004005fa in main ()
+(gdb) info register rip
+rip            0x4005fa	0x4005fa <main+4>
+(gdb) 
+\end{lstlisting}
+
+From here we can use the \texttt{x} command to examine the state of the program.
+\texttt{x/5i \$rip} will display the next 5 instructions to be executed, and
+\texttt{x/8xw \$rsp} will display the first 5 hexadecimal words on the top of the
+stack. You can get more information on how to use \texttt{x} with \texttt{help
+x}.
+
+\begin{lstlisting}
+(gdb) x/5i $rip
+=> 0x4005fa <main+4>:	sub    rsp,0x10
+   0x4005fe <main+8>:	mov    rax,QWORD PTR fs:0x28
+   0x400607 <main+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x40060b <main+21>:	xor    eax,eax
+   0x40060d <main+23>:	mov    edi,0x4006d4
+(gdb) x/8xw $rsp
+0x7fffffffdee0:	0x00400650	0x00000000	0xf7a2d830	0x00007fff
+0x7fffffffdef0:	0x00000000	0x00000000	0xffffdfc8	0x00007fff
+(gdb) 
+\end{lstlisting}
+
+From the output above, we can see that the next instruction will subtract
+\texttt{0x10} from \texttt{\$rsp}. We can execute this instruction by running
+\texttt{nexti} and verify that it behaved as expected.
+
+\begin{lstlisting}
+(gdb) nexti
+0x00000000004005fe in main ()
+(gdb) x/5i $rip
+=> 0x4005fe <main+8>:	mov    rax,QWORD PTR fs:0x28
+   0x400607 <main+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x40060b <main+21>:	xor    eax,eax
+   0x40060d <main+23>:	mov    edi,0x4006d4
+   0x400612 <main+28>:	call   0x4004b0 <puts@plt>
+(gdb) x/8xw $rsp
+0x7fffffffded0:	0xffffdfc0	0x00007fff	0x00000000	0x00000000
+0x7fffffffdee0:	0x00400650	0x00000000	0xf7a2d830	0x00007fff
+(gdb) 
+\end{lstlisting}
+
+As expected, \texttt{rip} is now pointing at the next instruction and
+\texttt{rsp} has been decremented by \texttt{0x10} (4 words). We can use the
+\texttt{display} command to view \texttt{rip} and \texttt{rsp} every time
+execution stops.
+
+\begin{lstlisting}
+(gdb) display/5i $rip
+1: x/5i $rip
+=> 0x4005fe <main+8>:	mov    rax,QWORD PTR fs:0x28
+   0x400607 <main+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x40060b <main+21>:	xor    eax,eax
+   0x40060d <main+23>:	mov    edi,0x4006d4
+   0x400612 <main+28>:	call   0x4004b0 <puts@plt>
+(gdb) display/5xw $rsp
+2: x/5xw $rsp
+0x7fffffffded0:	0xffffdfc0	0x00007fff	0x00000000	0x00000000
+0x7fffffffdee0:	0x00400650
+(gdb) 
+\end{lstlisting}
+
+Use the \texttt{nexti} command to step through a few more instructions, and
+the stack and instruction pointers will update automatically.
+
+Next we'll set a breakpoint at the call to \texttt{scanf()}. We can find
+location of the \texttt{call} instruction with \texttt{disassemble}, set a
+breakpoint there with \texttt{break}, and stop at it with \texttt{continue}.
+
+\begin{lstlisting}
+(gdb) disassemble main
+Dump of assembler code for function main:
+   0x00000000004005f6 <+0>:	push   rbp
+   0x00000000004005f7 <+1>:	mov    rbp,rsp
+   0x00000000004005fa <+4>:	sub    rsp,0x10
+   0x00000000004005fe <+8>:	mov    rax,QWORD PTR fs:0x28
+   0x0000000000400607 <+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x000000000040060b <+21>:	xor    eax,eax
+   0x000000000040060d <+23>:	mov    edi,0x4006d4
+   0x0000000000400612 <+28>:	call   0x4004b0 <puts@plt>
+   0x0000000000400617 <+33>:	lea    rax,[rbp-0xc]
+   0x000000000040061b <+37>:	mov    rsi,rax
+   0x000000000040061e <+40>:	mov    edi,0x4006e0
+   0x0000000000400623 <+45>:	mov    eax,0x0
+   0x0000000000400628 <+50>:	call   0x4004e0 <__isoc99_scanf@plt>
+   0x000000000040062d <+55>:	mov    eax,0x0
+   0x0000000000400632 <+60>:	mov    rdx,QWORD PTR [rbp-0x8]
+   0x0000000000400636 <+64>:	xor    rdx,QWORD PTR fs:0x28
+   0x000000000040063f <+73>:	je     0x400646 <main+80>
+   0x0000000000400641 <+75>:	call   0x4004c0 <__stack_chk_fail@plt>
+   0x0000000000400646 <+80>:	leave  
+   0x0000000000400647 <+81>:	ret    
+End of assembler dump.
+(gdb) break *0x400628
+Breakpoint 2 at 0x400628
+(gdb) run
+Starting program: /home/devneal/Security/REFE/textbook/elf 
+
+Breakpoint 1, 0x00000000004005fa in main ()
+1: x/5i $rip
+=> 0x4005fa <main+4>:	sub    rsp,0x10
+   0x4005fe <main+8>:	mov    rax,QWORD PTR fs:0x28
+   0x400607 <main+17>:	mov    QWORD PTR [rbp-0x8],rax
+   0x40060b <main+21>:	xor    eax,eax
+   0x40060d <main+23>:	mov    edi,0x4006d4
+2: x/5xw $rsp
+0x7fffffffdee0:	0x00400650	0x00000000	0xf7a2d830	0x00007fff
+0x7fffffffdef0:	0x00000000
+(gdb) continue 
+Continuing.
+ELF example
+
+Breakpoint 2, 0x0000000000400628 in main ()
+1: x/5i $rip
+=> 0x400628 <main+50>:	call   0x4004e0 <__isoc99_scanf@plt>
+   0x40062d <main+55>:	mov    eax,0x0
+   0x400632 <main+60>:	mov    rdx,QWORD PTR [rbp-0x8]
+   0x400636 <main+64>:	xor    rdx,QWORD PTR fs:0x28
+   0x40063f <main+73>:	je     0x400646 <main+80>
+2: x/5xw $rsp
+0x7fffffffded0:	0xffffdfc0	0x00007fff	0x3f318f00	0xf8ca2299
+0x7fffffffdee0:	0x00400650
+(gdb) 
+\end{lstlisting}
+
+Now we can examine the arguments to \texttt{scanf()}. The first is a format
+string, which can be read by passing the \texttt{/s} flag to \texttt{x}, and the
+second is the address on the stack where the input will be stored.
+
+\begin{lstlisting}
+(gdb) info registers $rdi $rsi
+rdi            0x4006e0	4196064
+rsi            0x7fffffffded4	140737488346836
+(gdb) x/s 0x4006e0
+0x4006e0:	"%d\n"
+(gdb) 
+\end{lstlisting}
+
+You can use the \texttt{stepi} instruction to step into the call to
+\texttt{scanf()}. Take a look around, then return to \texttt{main()} with the
+\texttt{return} command.
+
+\begin{lstlisting}
+(gdb) stepi 
+0x00000000004004e0 in __isoc99_scanf@plt ()
+1: x/5i $rip
+=> 0x4004e0 <__isoc99_scanf@plt>:	
+    jmp    QWORD PTR [rip+0x200b4a]        # 0x601030
+   0x4004e6 <__isoc99_scanf@plt+6>:	push   0x3
+   0x4004eb <__isoc99_scanf@plt+11>:	jmp    0x4004a0
+   0x4004f0:	jmp    QWORD PTR [rip+0x200b02]        # 0x600ff8
+   0x4004f6:	xchg   ax,ax
+2: x/5xw $rsp
+0x7fffffffdec8:	0x0040062d	0x00000000	0xffffdfc0	0x00007fff
+0x7fffffffded8:	0x3f318f00
+(gdb) where
+#0  0x00000000004004e0 in __isoc99_scanf@plt ()
+#1  0x000000000040062d in main ()
+(gdb) disassemble 
+Dump of assembler code for function __isoc99_scanf@plt:
+=> 0x00000000004004e0 <+0>:	jmp    QWORD PTR [rip+0x200b4a]        # 0x601030
+   0x00000000004004e6 <+6>:	push   0x3
+   0x00000000004004eb <+11>:	jmp    0x4004a0
+End of assembler dump.
+(gdb) return
+Make selected stack frame return now? (y or n) y
+#0  0x000000000040062d in main ()
+(gdb) 
+\end{lstlisting}
+
+From here you can exit \texttt{gdb} with the \texttt{quit} command. This
+walkthrough has covered enough on \texttt{gdb} to get you started learning about
+it on your own. When in doubt, remember to use the \texttt{help} command or
+check the man page for \texttt{gdb}.

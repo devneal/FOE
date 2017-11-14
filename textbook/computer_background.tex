@@ -1,0 +1,105 @@
+\subsection{Bits, Bytes, and their Representations}
+\subsubsection{Numbers in different bases}
+Bits are the fundamental unit of data on a computer. A bit can only be either on
+or off, 0 or 1. It's awkward to represent data in terms of bits, so they are
+usually referred to in groups. A string of eight consecutive bits is called a
+byte, and a pair of two bytes, or 16 bits, is called a word. Bytes are often
+further grouped into pairs, called double words, or groups of four, called quad
+words.
+
+Since a bit can only take on one of two values, computers store numbers in base
+two, or binary. Just as the digits of a number in base 10 are each scaled by a
+power of 10, each bit in a binary number is scaled by a power of 2. The
+rightmost bit has a value of either 0 or 1 (scaled by $2^0$, or 1), and every
+other bit is scaled by twice as much as the bit to its right. Therefore, if we
+zero-index the bits starting from the right, the $i$th bit is scaled by $2^i$.
+
+\begin{exmp}[Numbers in base 2]
+\begin{align*}
+11010110_2 & = 1 \times 2^7 + 1 \times 2^6 + 0 \times 2^5 + 1 \times 2^4 + 0 \times 2^3 + 1 \times 2^2 + 1 \times 2^1 + 0 \times 2^0 \\
+           & = 128 + 64 + 0 + 16 + 0 + 4 + 2 + 0 \\
+           & = 214
+\end{align*}
+Note that the 2 subscript denotes a number written in base 2.
+\end{exmp}
+
+Since it's tedious to write bytes as strings of bits, they are often represented
+in base 16, or hexadecimal. This representation is convenient since 4 bits can
+be represented with a single hexadecimal digit. Since there are more hexadecimal
+digits than decimal ones, we use a-f as digits with values 10-15.
+
+\begin{exmp}[Numbers in base 16]
+\begin{align*}
+11010110_2 &= 1101_2 \times 16^1 + 0110_2 \times 16^0 \\
+           &= 13 \times 16^1 + 6 \times 16^0 \\
+           &= \emph{0xd6}
+\end{align*}
+Note that the 0x prefix denotes a number written in base 16.
+\end{exmp}
+
+\subsubsection{2s complement}
+Since computers can only store data as bits, there is no inherent way to
+represent negative numbers. To address this problem, the highest-order bit is
+given a negative value when negative numbers are needed. This representation for
+negative numbers is called 2's complement. Whereas a string of $n$ bits normally
+takes values from $0$ to $2^n-1$, the same $n$ bits in 2's complement can take
+any values from $-2^{n-1}$ to $2^{n-1}-1$.
+
+\subsubsection{Machine Words}
+The number of bits that a computer can read, write, and manipulate at a time is
+called a machine word, not to be confused by the 16-bit words from above. A
+computer that operates on 16 bits at a time is said to run on a 16-bit
+architecture. The size of a machine word varies between computers. At the time
+of writing, most modern computers have 64-bit machine words, and thus run on
+64-bit architectures. The size of machine words generally gets smaller as the
+computer gets older. The original PlayStation and the GameCube ran on 32-bit
+architectures, and the original GameBoy had an 8-bit architecture. x86 is the
+most common 32-bit architecture, and it's successor x86-64, is the most common
+64-bit architecture.
+
+\subsubsection{Endianness}
+Not all computers store multiple bytes of data in the same order. Some store the
+most significant byte first, which results in a number like
+$\texttt{0x080485a2}$ being stored as $\texttt{0x08}$ $\texttt{0x04}$
+$\texttt{0x85}$ $\texttt{0xa2}$. This is called big-endian byte order, and it is
+surprisingly rare. Most computers store data in little-endian byte order, which
+lists the least-significant byte first. The same number $\texttt{0x080485a2}$
+stored in little-endian byte order would be stored as $\texttt{0xa2}$
+$\texttt{0x85}$ $\texttt{0x04}$ $\texttt{0x08}$.
+
+% cpu, registers, and memory
+\subsection{Computer Model}
+Although we tend to think of a ``computer'' as consisting of many parts such as a
+monitor, hard disk, mouse, CD drive, etc., there are only three components we
+need to know about in order to exploit software.
+
+\subsubsection{The CPU}
+The Central Processing Unit, or CPU, is responsible for executing the
+instructions contained in a program. This typically includes performing
+arithmetic, reading and writing to memory, and making requests to the kernel via
+syscalls. Different CPUs understand different variants of machine code, and a
+CPU can only run an executable if it is written in the variant that the CPU
+understands.
+
+\subsubsection{Memory}
+Memory acts as both a scratchpad for the CPU to use while executing a program,
+and the place where the CPU reads program instructions. It is also used to keep
+track of function calls and handle recursion. Memory is the \emph{only} place
+where the CPU can read and write data.
+
+\subsubsection{Registers}
+Registers are very fast memory located on the CPU. Although they are fast, each
+register can typically only store a single machine word, which means the vast
+majority of data must reside in main memory. 
+
+\subsubsection{Compilers}
+A \emph{compiler} translates source code into machine code, producing an object
+file. An object file cannot be run until it is linked, a task which is left
+to the linker. 
+
+\subsubsection{Linkers}
+Linkers combine object files in a process called linking. This produces an
+executable, a binary which can be executed. This may sound confusing since we
+typically say that we run binaries after compiling them, but what programmers
+colloquially refer to as ``compiling'' is actually compiling \textit{and}
+linking.
