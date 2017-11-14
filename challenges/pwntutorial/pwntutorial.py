@@ -10,7 +10,7 @@ def welcome(conn):
     # pwnlib.util.packing
     conn.sendline("Welcome to the pwntools tutorial server!")
     remote_test(conn)
-    packing_test(conn)
+    fiddling_test(conn)
     packing_test(conn)
     conn.sendline("You're done")
 
@@ -29,7 +29,6 @@ def suffix(n):
     return str(n) + suff
 
 def remote_question(conn, prompt, ans):
-    print ans
     conn.sendline(prompt)
     user_input = conn.readline()
     if int(user_input) != ans:
@@ -66,7 +65,7 @@ def random_hex_word():
 def random_data_word():
     return "".join([chr(random.randint(0, 256)) for _ in range(8)])
 
-def packing_test(conn):
+def fiddling_test(conn):
     conn.sendline("Send this hex back as data")
     hex_str = random_hex_word()
     conn.sendline(hex_str)
