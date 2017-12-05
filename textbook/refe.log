@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99992 (TeX Live 2015/Debian) (preloaded format=xelatex 2017.11.22)  30 NOV 2017 14:13
+This is XeTeX, Version 3.14159265-2.6-0.99992 (TeX Live 2015/Debian) (preloaded format=xelatex 2017.11.22)  5 DEC 2017 16:52
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -3449,20 +3449,24 @@ Missing character: There is no ─ in font DroidSansMono-ot1!
 Missing character: There is no ─ in font DroidSansMono-ot1!
 Missing character: There is no ► in font DroidSansMono-ot1!
  [56] [57] [58]
-[59] [60] (./example_code/rops/leakRop.c) [61]
-(./example_code/rops/input_leakRop.py) [62] (./example_code/rops/makeLeak.c)
-[63] (./example_code/rops/input_makeLeak.py) [64]) [65] (./refe.aux)
+[59] [60] [61]
+Overfull \hbox (4.93579pt too wide) in paragraph at lines 1914--1924
+[]\OT1/cmr/m/n/10 This pro-gram was com-piled with \OT1/fdm/bx/n/10 gcc -o ret2
+libc ret2libc.c -fno-stack-protector
+ []
+
+[62] [63] [64] [65] [66] [67] [68] [69]) [70] (./refe.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  ) 
 Here is how much of TeX's memory you used:
- 2694 strings out of 495579
- 36966 string characters out of 6187321
+ 2678 strings out of 495579
+ 36639 string characters out of 6187321
  248832 words of memory out of 5000000
- 5948 multiletter control sequences out of 15000+600000
+ 5947 multiletter control sequences out of 15000+600000
  8035 words of font info for 30 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  29i,10n,32p,253b,1457s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on refe.pdf (65 pages).
+Output written on refe.pdf (70 pages).

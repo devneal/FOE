@@ -31,10 +31,10 @@
 \contentsline {subsection}{\numberline {4.2}Shellcoding}{52}
 \contentsline {subsubsection}{\numberline {4.2.1}Crafting with \texttt {pwndbg} and \texttt {pwntools}}{54}
 \contentsline {subsection}{\numberline {4.3}DEP, ROP, and ret2libc}{60}
-\contentsline {subsection}{\numberline {4.4}ASLR}{61}
-\contentsline {subsubsection}{\numberline {4.4.1}ASLR}{61}
-\contentsline {subsubsection}{\numberline {4.4.2}Exploiting a leak}{61}
-\contentsline {subsubsection}{\numberline {4.4.3}Making a leak}{63}
-\contentsline {section}{\numberline {5}Exploiting the Heap}{65}
-\contentsline {section}{\numberline {6}Reverse Engineering}{65}
-\contentsline {section}{\numberline {7}C++}{65}
+\contentsline {subsection}{\numberline {4.4}ASLR}{65}
+\contentsline {subsubsection}{\numberline {4.4.1}ASLR}{65}
+\contentsline {subsubsection}{\numberline {4.4.2}Exploiting a leak}{65}
+\contentsline {subsubsection}{\numberline {4.4.3}Making a leak}{67}
+\contentsline {section}{\numberline {5}Exploiting the Heap}{70}
+\contentsline {section}{\numberline {6}Reverse Engineering}{70}
+\contentsline {section}{\numberline {7}C++}{70}
