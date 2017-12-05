@@ -3,33 +3,43 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Bits, Bytes, and their Representations}{2}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.1}Numbers in different bases}{2}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.2}2s complement}{2}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.3}Machine Words}{3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.3}Machine Words}{2}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.4}Endianness}{3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Computer Model}{3}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.1}The CPU}{3}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.2}Memory}{3}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.3}Registers}{3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.4}Compilers}{3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.5}Linkers}{3}}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Understanding the Playing Field}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}x86 and x86-64}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Assembly, the Elven Tongue}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Memory Layout}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}The Stack and Heap}{5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}ELF Anatomy}{5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}PLT and GOT}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Stepping through with GDB}{6}}
-\@writefile{toc}{\contentsline {section}{\numberline {3}Tools of the Trade}{6}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Reverse Engineering}{6}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Exploiting the Stack}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Memory Corruption}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Shellcoding}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}DEP, ROP, and ret2libc}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}ASLR}{6}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.1}ASLR}{6}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.2}Exploiting a leak}{6}}
-\@writefile{lol}{\contentsline {lstlisting}{../challenges/rops/leakRop.c}{6}}
-\@writefile{lol}{\contentsline {lstlisting}{../challenges/rops/input\textunderscore leakRop.py}{7}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.4.3}Making a leak}{8}}
-\@writefile{lol}{\contentsline {lstlisting}{../challenges/rops/makeLeak.c}{8}}
-\@writefile{lol}{\contentsline {lstlisting}{../challenges/rops/input\textunderscore makeLeak.py}{9}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}Exploiting the Heap}{11}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}C++}{11}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Intel vs. AT\&T}{4}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Common Assembly Instructions}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}The Stack and Heap}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Memory Layout}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}ELF Anatomy}{8}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.5.1}Symbols, Sections, and Segments}{9}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.5.2}PLT and GOT}{12}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Stepping through with GDB}{13}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Tools of the Trade}{17}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}\texttt  {pwntools}}{17}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.1}\texttt  {pwnlib.tubes}}{18}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.2}\texttt  {pwnlib.util}}{19}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}\texttt  {pwndbg}}{20}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Exploiting the Stack}{27}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Memory Corruption}{27}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Shellcoding}{52}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Crafting with \texttt  {pwndbg} and \texttt  {pwntools}}{54}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}DEP, ROP, and ret2libc}{60}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}ASLR}{61}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.1}ASLR}{61}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.2}Exploiting a leak}{61}}
+\@writefile{lol}{\contentsline {lstlisting}{"example\textunderscore code/rops/leakRop.c"}{61}}
+\@writefile{lol}{\contentsline {lstlisting}{"example\textunderscore code/rops/input\textunderscore leakRop.py"}{62}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.3}Making a leak}{63}}
+\@writefile{lol}{\contentsline {lstlisting}{"example\textunderscore code/rops/makeLeak.c"}{63}}
+\@writefile{lol}{\contentsline {lstlisting}{"example\textunderscore code/rops/input\textunderscore makeLeak.py"}{64}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Exploiting the Heap}{65}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Reverse Engineering}{65}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}C++}{65}}

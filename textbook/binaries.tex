@@ -74,8 +74,8 @@ operations on data.
 \begin{itemize}
     \item \texttt{add <arg1> <arg2>} - writes arg1 + arg2 to arg1
     \item \texttt{sub <arg1> <arg2>} - writes arg1 - arg2 to arg1
-    \item \texttt{xor <arg1> <arg2>} - writes arg1 ^ arg2 to arg1
-    \item \texttt{and <arg1> <arg2>} - writes arg1 & arg2 to arg1
+    \item \texttt{xor <arg1> <arg2>} - writes arg1 \^ arg2 to arg1
+    \item \texttt{and <arg1> <arg2>} - writes arg1 \& arg2 to arg1
     \item \texttt{imul <arg1> <arg2>} - writes arg1 * arg2 to arg1
     \item \texttt{idiv <arg>} - writes rax / arg to rdx:rax (or architecture
         equivalent)
@@ -543,7 +543,7 @@ gdb <program>. Not much will happen, since gdb is run only through the command
 line.
 
 \begin{lstlisting}
-> gdb -nh elf
+> gdb elf
 GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5) 7.11.1
 Copyright (C) 2016 Free Software Foundation, Inc.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
@@ -565,6 +565,7 @@ Reading symbols from elf...(no debugging symbols found)...done.
 It's useful to have a few survival gdb commands to get started. These can get
 you pretty far:
 
+% TODO: add info breakpoints
 \begin{itemize}
     \item help - get information on how to use a command
     \item disassemble - show disassembly of a function
@@ -578,6 +579,9 @@ you pretty far:
     \item stepi - execute an instruction following jumps / calls
     \item continue - resume execution from a breakpoint
 \end{itemize}
+
+As explained in the welcome message, you can use \texttt{help} or
+\texttt{apropos} to get information if you get lost.
 
 If you type part of a command and press tab twice, \texttt{gdb} will suggest
 ways to finish the command. If there is only one way to complete the command you
