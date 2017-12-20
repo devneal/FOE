@@ -1,0 +1,527 @@
+By now you already know enough to start learning about and exploiting bugs, but
+you'll quickly find that a lot of the difficulty comes from figuring out how to
+do the things you want to. Interacting with a program, manipulating data, and
+finding the information you need used to involve mastering several different
+ad-hoc utilities. Now we have access to tools that were developed with
+exploitation in mind to make these small tasks as easy as possible so you can
+focus only on finding your exploit.
+
+\subsection{\texttt{pwntools}}
+\texttt{pwntools} is an exploit development framework written for python. It
+consists of several modules, each of which is designed to make a specific task
+much easier.  pwntools has over 40 differet modules at the time of writing, but
+we'll only go over a few of the most useful ones here.
+
+\begin{itemize}
+    \item \texttt{pwnlib.tubes} - sending and receiving data
+    \item \texttt{pwnlib.util} - manipulating data
+\end{itemize}
+
+\subsubsection{\texttt{pwnlib.tubes}}
+The \texttt{tubes} module is used for communication between your program and
+just about everything else. It has a number of submodules each of which are used
+to communicate over different interfaces. For example,
+\texttt{pwnlib.tubes.process} can communicate with any program you can run
+locally. Here is an example using some common shell utilities.
+
+\begin{lstlisting}
+>>> p = process("cat")
+>>> p.send("hello")
+>>> p.read()
+'hello'
+>>> p.sendline("goodbye")
+>>> p.readuntil("by")
+'goodby'
+>>> p.readline()
+'e\n'
+>>> p.shutdown()
+>>> p = process(["echo", "test", "string"]) 
+>>> p.readregex(".*str")
+'test str'
+>>> p.readline()
+'ing\n'
+\end{lstlisting}
+
+\texttt{pwnlib.tubes.remote} is used to make a TCP or UDP connection to a remote
+host. It's counterpart, \texttt{pwnlib.tubes.listen} is used to receive those
+connections. An example is given below.
+
+\begin{lstlisting}
+>>> l = listen(8888)
+>>> r = remote("localhost", 8888)
+>>> r.sendline("hello from remote")
+>>> l.readline()
+'hello from remote\n'
+>>> l.send("hello from listen")
+>>> r.readuntil("from")
+'hello from'
+>>> r.read()
+' listen'
+>>> r.send("{\"length\":\"7\", \"type\":\"ascii\", \"data\":\"network\"}")
+>>> l.readregex("\"type\":\".*\"")
+'{"length":"7", "type":"ascii"'
+\end{lstlisting}
+
+You'll notice that the \texttt{remote} and \texttt{listen} classes have some of
+the same methods as the \texttt{process} class. This is the beauty of the
+\texttt{tubes} module; it provides a single interface which can be used to
+communicate with multiple external processes. There are also submodules for
+serial ports and ssh communication, both of which use the same methods in the
+examples above. These methods are described in more detail below.
+
+\begin{itemize}
+    \item \texttt{send} - sends data
+    \item \texttt{sendline} - like send, but appends a newline before sending
+    \item \texttt{read} / \texttt{recv} - receive data
+    \item \texttt{readline} / \texttt{recvline} - receive data until a newline is found and return
+        it
+    \item \texttt{readuntil} / \texttt{recvuntil} receive data until the specified string is found,
+        and return it
+    \item \texttt{readregex} / \texttt{recvregex} - receive data until the specified regex is
+        matched, then return it
+\end{itemize}
+
+\subsubsection{\texttt{pwnlib.util}}
+The util module provides functions for several of the tasks that
+frequently come up when developing exploits. Submodules include the
+\texttt{fiddling} module for bit operations and converting between different
+formats, the \texttt{lists} module for manipulating lists, and the
+\texttt{packing} module for converting between numbers and their equivalent
+data strings.
+
+\begin{lstlisting}
+>>> s = "pwntools is awesome"
+>>> s_hex = enhex(s)
+>>> s_hex
+'70776e746f6f6c7320697320617765736f6d65'
+>>> print hexdump(s)
+00000000  70 77 6e 74  6f 6f 6c 73  20 69 73 20  61 77 65 73  |pwnt│ools│ is │awes|
+00000010  6f 6d 65                                            |ome|
+00000013
+>>> unhex(s_hex) == s
+True
+>>>
+>>> s_ord = ordlist(s)
+>>> s_ord
+[112, 119, 110, 116, 111, 111, 108, 115, 32, 105, 115, 32, 97, 119, 101, 115, 111, 109, 101]
+>>> s_ord[0] += 1
+>>> s = unordlist(s_ord)
+>>> s
+'qwntools is awesome'
+>>>
+>>> val = 0xffffdeadbeefffff
+>>> data = p64(val)
+>>> data
+'\xff\xff\xef\xbe\xad\xde\xff\xff'
+>>> val == u64(data)
+True
+\end{lstlisting}
+
+As before, here is a description of each of the functions and their uses.
+\begin{itemize}
+    \item \texttt{enhex} - convert an ascii string to hexadecimal
+    \item \texttt{unhex} - convert a hexadecimal string to ascii
+    \item \texttt{hexdump} - return a hex dump of a hexadecimal string
+    \item \texttt{ordlist} - convert a string to a list of ascii values
+    \item \texttt{unordlist} - convert a list of ascii values to a string
+    \item \texttt{p64} - pack an integer into a 64-bit machine word
+    \item \texttt{u64} - unpack a 64-bit machine word into an integer
+\end{itemize}
+
+\subsection{\texttt{pwndbg}}
+Although \texttt{gdb} is nice, it makes it unnecessarily difficult to find some
+of the information we need. \texttt{pwndbg} is an extension to \texttt{gdb}
+written with exploit development in mind. In addition to adding several useful
+commands, it also automatically displays program information at every
+breakpoint.
+
+You can activate \texttt{pwntools} by either running \texttt{source
+<path\_to\_pwntools>} in \texttt{gdb} or by putting the line in
+\texttt{~./gdbinit}. Below is the output after opening \texttt{elf\_example.c} in
+\texttt{pwndbg}.
+
+\begin{lstlisting}
+> gdb elf
+GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5) 7.11.1
+Copyright (C) 2016 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Loaded 112 commands. Type pwndbg [filter] for a list.
+Reading symbols from elf...(no debugging symbols found)...done.
+pwndbg> 
+\end{lstlisting}
+
+As explained in the help message, you can run \texttt{pwndbg} to display all of
+the commands added by \texttt{pwndbg}, and optionally add a filter to display
+only the commands that match the filter. All of the commands from vanilla
+\texttt{gdb} are still available in \texttt{pwndbg}. This means you can still
+use \texttt{ni}, \texttt{si}, \texttt{x}, etc., as usual.
+
+
+The best way to see what \texttt{pwndbg} has to offer is to just start using it.
+Set a breakpoint at \texttt{main()} and stop at it.
+
+\begin{lstlisting}
+pwndbg> b main
+Breakpoint 1 at 0x4005fa
+pwndbg> r
+Starting program: /home/devneal/Security/REFE/textbook/example_code/elf 
+
+Breakpoint 1, 0x00000000004005fa in main ()
+LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
+[───────────REGISTERS───────────]
+*RAX  0x4005f6 (main) ◂— push   rbp
+ RBX  0x0
+ RCX  0x0
+*RDX  0x7fffffffdfb8 —▸ 0x7fffffffe2ee ◂— 'XDG_VTNR=7'
+*RDI  0x1
+*RSI  0x7fffffffdfa8 —▸ 0x7fffffffe2b8 ◂— 0x65642f656d6f682f ('/home/de')
+*R8   0x4006c0 (__libc_csu_fini) ◂— ret    
+*R9   0x7ffff7de7ab0 (_dl_fini) ◂— push   rbp
+*R10  0x846
+*R11  0x7ffff7a2d740 (__libc_start_main) ◂— push   r14
+*R12  0x400500 (_start) ◂— xor    ebp, ebp
+*R13  0x7fffffffdfa0 ◂— 0x1
+ R14  0x0
+ R15  0x0
+*RBP  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+*RSP  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+*RIP  0x4005fa (main+4) ◂— sub    rsp, 0x10
+[───────────DISASM───────────]
+ ► 0x4005fa <main+4>     sub    rsp, 0x10
+   0x4005fe <main+8>     mov    rax, qword ptr fs:[0x28]
+   0x400607 <main+17>    mov    qword ptr [rbp - 8], rax
+   0x40060b <main+21>    xor    eax, eax
+   0x40060d <main+23>    mov    edi, 0x4006d4
+   0x400612 <main+28>    call   puts@plt                      <0x4004b0>
+ 
+   0x400617 <main+33>    lea    rax, [rbp - 0xc]
+   0x40061b <main+37>    mov    rsi, rax
+   0x40061e <main+40>    mov    edi, 0x4006e0
+   0x400623 <main+45>    mov    eax, 0
+   0x400628 <main+50>    call   __isoc99_scanf@plt            <0x4004e0>
+[────────────STACK────────────]
+00:0000│ rbp rsp  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+01:0008│          0x7fffffffdec8 —▸ 0x7ffff7a2d830 (__libc_start_main+240) ◂— mov    edi, eax
+02:0010│          0x7fffffffded0 ◂— 0x0
+03:0018│          0x7fffffffded8 —▸ 0x7fffffffdfa8 —▸ 0x7fffffffe2b8 ◂— 0x65642f656d6f682f ('/home/de')
+04:0020│          0x7fffffffdee0 ◂— 0x1f7ffcca0
+05:0028│          0x7fffffffdee8 —▸ 0x4005f6 (main) ◂— push   rbp
+06:0030│          0x7fffffffdef0 ◂— 0x0
+07:0038│          0x7fffffffdef8 ◂— 0xbfb8facd527a9cd
+[───────────BACKTRACE───────────]
+ ► f 0           4005fa main+4
+   f 1     7ffff7a2d830 __libc_start_main+240
+Breakpoint main
+pwndbg> 
+\end{lstlisting}
+
+\texttt{pwndbg} will automatically display the contents of the registers, the
+disassembled instructions around \texttt{rip}, the top of the stack, and a
+backtrace giving the current chain of function calls. You can display this
+information at any time with the \texttt{context} command. If you only want to
+see one of the sections, run \texttt{context} followed by the name of the
+section.
+
+\texttt{pwndbg} provides the \texttt{nearpc} and \texttt{emulate} commands for
+displaying commands near \texttt{\$rip} (also called the program counter).
+Note that these commands will only display commands that will be executed based
+on the current state of the program. This makes a significant difference when
+analyzing code with lots of jump instructions. Pause execution at the call to
+\texttt{puts()}.
+
+\begin{lstlisting}
+pwndbg> nearpc
+ ► 0x4005fa <main+4>     sub    rsp, 0x10
+   0x4005fe <main+8>     mov    rax, qword ptr fs:[0x28]
+   0x400607 <main+17>    mov    qword ptr [rbp - 8], rax
+   0x40060b <main+21>    xor    eax, eax
+   0x40060d <main+23>    mov    edi, 0x4006d4
+   0x400612 <main+28>    call   puts@plt                      <0x4004b0>
+ 
+   0x400617 <main+33>    lea    rax, [rbp - 0xc]
+   0x40061b <main+37>    mov    rsi, rax
+   0x40061e <main+40>    mov    edi, 0x4006e0
+   0x400623 <main+45>    mov    eax, 0
+   0x400628 <main+50>    call   __isoc99_scanf@plt            <0x4004e0>
+pwndbg> break *main+28
+Breakpoint 2 at 0x400612
+pwnbdg> c
+Continuing.
+
+0x0000000000400612 in main ()
+LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
+[───────────REGISTERS───────────]
+*RAX  0x0
+ RBX  0x0
+ RCX  0x0
+ RDX  0x7fffffffdfb8 —▸ 0x7fffffffe2ee ◂— 'XDG_VTNR=7'
+*RDI  0x4006d4 ◂— and    byte ptr [rbp + 0x78], r12b /* 'ELF example' */
+ RSI  0x7fffffffdfa8 —▸ 0x7fffffffe2b8 ◂— 0x65642f656d6f682f ('/home/de')
+ R8   0x4006c0 (__libc_csu_fini) ◂— ret    
+ R9   0x7ffff7de7ab0 (_dl_fini) ◂— push   rbp
+ R10  0x846
+ R11  0x7ffff7a2d740 (__libc_start_main) ◂— push   r14
+ R12  0x400500 (_start) ◂— xor    ebp, ebp
+ R13  0x7fffffffdfa0 ◂— 0x1
+ R14  0x0
+ R15  0x0
+ RBP  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+*RSP  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+*RIP  0x400612 (main+28) ◂— call   0x4004b0
+[───────────DISASM───────────]
+   0x4005fa <main+4>     sub    rsp, 0x10
+   0x4005fe <main+8>     mov    rax, qword ptr fs:[0x28]
+   0x400607 <main+17>    mov    qword ptr [rbp - 8], rax
+   0x40060b <main+21>    xor    eax, eax
+   0x40060d <main+23>    mov    edi, 0x4006d4
+ ► 0x400612 <main+28>    call   puts@plt                      <0x4004b0>
+        s: 0x4006d4 ◂— 'ELF example'
+ 
+   0x400617 <main+33>    lea    rax, [rbp - 0xc]
+   0x40061b <main+37>    mov    rsi, rax
+   0x40061e <main+40>    mov    edi, 0x4006e0
+   0x400623 <main+45>    mov    eax, 0
+   0x400628 <main+50>    call   __isoc99_scanf@plt            <0x4004e0>
+[────────────STACK────────────]
+00:0000│ rsp  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+01:0008│      0x7fffffffdeb8 ◂— 0x4e5d491772575800
+02:0010│ rbp  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+03:0018│      0x7fffffffdec8 —▸ 0x7ffff7a2d830 (__libc_start_main+240) ◂— mov    edi, eax
+04:0020│      0x7fffffffded0 ◂— 0x0
+05:0028│      0x7fffffffded8 —▸ 0x7fffffffdfa8 —▸ 0x7fffffffe2b8 ◂— 0x65642f656d6f682f ('/home/de')
+06:0030│      0x7fffffffdee0 ◂— 0x1f7ffcca0
+07:0038│      0x7fffffffdee8 —▸ 0x4005f6 (main) ◂— push   rbp
+[───────────BACKTRACE───────────]
+ ► f 0           400612 main+28
+   f 1     7ffff7a2d830 __libc_start_main+240
+pwndbg> 
+\end{lstlisting}
+
+Notice how \texttt{pwndbg} will automatically display the arguments to the call
+to \texttt{puts()}, and print it as a string. \texttt{pwndbg} offers several
+ways to display this information. \texttt{db} will display data as bytes,
+\texttt{dw} will display it as words, \texttt{dd} will display it as double
+words, \texttt{dq} will display it as quad words, and \texttt{ds} will display
+it as a string.
+
+\begin{lstlisting}
+pwndbg> db 0x4006d4
+00000000004006d4     45 4c 46 20 65 78 61 6d 70 6c 65 00 25 64 00 00
+00000000004006e4     01 1b 03 3b 30 00 00 00 05 00 00 00 bc fd ff ff
+00000000004006f4     7c 00 00 00 1c fe ff ff 4c 00 00 00 12 ff ff ff
+0000000000400704     a4 00 00 00 6c ff ff ff c4 00 00 00 dc ff ff ff
+pwndbg> dw 0x4006d4
+00000000004006d4     4c45 2046 7865 6d61 6c70 0065 6425 0000
+00000000004006e4     1b01 3b03 0030 0000 0005 0000 fdbc ffff
+00000000004006f4     007c 0000 fe1c ffff 004c 0000 ff12 ffff
+0000000000400704     00a4 0000 ff6c ffff 00c4 0000 ffdc ffff
+pwndbg> dd 0x4006d4
+00000000004006d4     20464c45 6d617865 00656c70 00006425
+00000000004006e4     3b031b01 00000030 00000005 fffffdbc
+00000000004006f4     0000007c fffffe1c 0000004c ffffff12
+0000000000400704     000000a4 ffffff6c 000000c4 ffffffdc
+pwndbg> dq 0x4006d4
+00000000004006d4     6d61786520464c45 0000642500656c70
+00000000004006e4     000000303b031b01 fffffdbc00000005
+00000000004006f4     fffffe1c0000007c ffffff120000004c
+0000000000400704     ffffff6c000000a4 ffffffdc000000c4
+pwndbg> ds 0x4006d4
+4006d4 'ELF example'
+\end{lstlisting}
+
+If you have a list of pointers in memory, you can resolve several of them at
+once with \texttt{dps} or \texttt{telescope}. This tends to be most useful for
+the stack, so if you run the commands with no arguments it will default to the
+stack.
+
+\begin{lstlisting}
+pwndbg> dps
+00:0000│ rsp  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+01:0008│      0x7fffffffdeb8 ◂— 0x562ac01897d4100
+02:0010│ rbp  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+03:0018│      0x7fffffffdec8 —▸ 0x7ffff7a2d830 (__libc_start_main+240) ◂— mov    edi, eax
+04:0020│      0x7fffffffded0 ◂— 0x0
+05:0028│      0x7fffffffded8 —▸ 0x7fffffffdfa8 —▸ 0x7fffffffe2bb ◂— 0x65642f656d6f682f ('/home/de')
+06:0030│      0x7fffffffdee0 ◂— 0x1f7ffcca0
+07:0038│      0x7fffffffdee8 —▸ 0x4005f6 (main) ◂— push   rbp
+pwndbg> 
+\end{lstlisting}
+
+Set a breakpoint at the call to \texttt{scanf()} and pause execution there.
+You'll notice that the arguments are a ``\%d'' format string and a memory
+address, which is currently uninitialized. At this point you have 3 breakpoints:
+one at the start of \texttt{main()}, one at the call to \texttt{puts()} and one
+at the call to \texttt{scanf()}. Vanilla \texttt{gdb} provides \texttt{info
+breakpoints}, but \texttt{pwndbg} has a family of commands for breakpoint
+control. \texttt{bl} lists breakpoints, \texttt{bc} clears them,
+\texttt{be} and \texttt{bd} enables and disables them respectively, and
+\texttt{bp} sets them.
+
+\begin{lstlisting}
+pwndbg> bp *main+50
+Breakpoint 3 at 0x400628
+pwndbg> c
+Continuing.
+ELF example
+
+Breakpoint 3, 0x0000000000400628 in main ()
+LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
+[───────────REGISTERS───────────]
+ RAX  0x0
+ RBX  0x0
+*RCX  0x7ffff7b04290 (__write_nocancel+7) ◂— cmp    rax, -0xfff
+*RDX  0x7ffff7dd3780 (_IO_stdfile_1_lock) ◂— 0x0
+*RDI  0x4006e0 ◂— and    eax, 0x1000064 /* '%d' */
+*RSI  0x7fffffffdeb4 ◂— 0x363f190000007fff
+*R8   0x602000 ◂— 0x0
+*R9   0xd
+*R10  0x7ffff7dd1b78 (main_arena+88) —▸ 0x602410 ◂— 0x0
+*R11  0x246
+ R12  0x400500 (_start) ◂— xor    ebp, ebp
+ R13  0x7fffffffdfa0 ◂— 0x1
+ R14  0x0
+ R15  0x0
+ RBP  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+ RSP  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+*RIP  0x400628 (main+50) ◂— call   0x4004e0
+[───────────DISASM───────────]
+   0x400612 <main+28>    call   puts@plt                      <0x4004b0>
+ 
+   0x400617 <main+33>    lea    rax, [rbp - 0xc]
+   0x40061b <main+37>    mov    rsi, rax
+   0x40061e <main+40>    mov    edi, 0x4006e0
+   0x400623 <main+45>    mov    eax, 0
+ ► 0x400628 <main+50>    call   __isoc99_scanf@plt            <0x4004e0>
+        format: 0x4006e0 ◂— 0x3b031b0100006425 /* '%d' */
+        vararg: 0x7fffffffdeb4 ◂— 0x363f190000007fff
+ 
+   0x40062d <main+55>    mov    eax, 0
+   0x400632 <main+60>    mov    rdx, qword ptr [rbp - 8]
+   0x400636 <main+64>    xor    rdx, qword ptr fs:[0x28]
+   0x40063f <main+73>    je     main+80                       <0x400646>
+ 
+   0x400641 <main+75>    call   __stack_chk_fail@plt          <0x4004c0>
+[────────────STACK────────────]
+00:0000│ rsp rsi-4  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+01:0008│            0x7fffffffdeb8 ◂— 0xeec7bf58363f1900
+02:0010│ rbp        0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+03:0018│            0x7fffffffdec8 —▸ 0x7ffff7a2d830 (__libc_start_main+240) ◂— mov    edi, eax
+04:0020│            0x7fffffffded0 ◂— 0x0
+05:0028│            0x7fffffffded8 —▸ 0x7fffffffdfa8 —▸ 0x7fffffffe2bb ◂— 0x65642f656d6f682f ('/home/de')
+06:0030│            0x7fffffffdee0 ◂— 0x1f7ffcca0
+07:0038│            0x7fffffffdee8 —▸ 0x4005f6 (main) ◂— push   rbp
+[───────────BACKTRACE───────────]
+ ► f 0           400628 main+50
+   f 1     7ffff7a2d830 __libc_start_main+240
+Breakpoint *main+50
+pwndbg> bl
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep y   0x00000000004005f6 <main>
+	breakpoint already hit 1 time
+2       breakpoint     keep y   0x0000000000400612 <main+28>
+	breakpoint already hit 1 time
+3       breakpoint     keep y   0x0000000000400628 <main+50>
+	breakpoint already hit 1 time
+pwndbg> bd 1
+pwndbg> r
+Starting program: /home/devneal/Security/REFE/textbook/example_code/elf 
+
+Breakpoint 2, 0x0000000000400612 in main ()
+LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
+[───────────REGISTERS───────────]
+ RAX  0x0
+ RBX  0x0
+*RCX  0x0
+*RDX  0x7fffffffdfb8 —▸ 0x7fffffffe2f1 ◂— 'XDG_VTNR=7'
+*RDI  0x4006d4 ◂— and    byte ptr [rbp + 0x78], r12b /* 'ELF example' */
+*RSI  0x7fffffffdfa8 —▸ 0x7fffffffe2bb ◂— 0x65642f656d6f682f ('/home/de')
+*R8   0x4006c0 (__libc_csu_fini) ◂— ret    
+*R9   0x7ffff7de7ab0 (_dl_fini) ◂— push   rbp
+*R10  0x846
+*R11  0x7ffff7a2d740 (__libc_start_main) ◂— push   r14
+ R12  0x400500 (_start) ◂— xor    ebp, ebp
+ R13  0x7fffffffdfa0 ◂— 0x1
+ R14  0x0
+ R15  0x0
+ RBP  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+ RSP  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+*RIP  0x400612 (main+28) ◂— call   0x4004b0
+[───────────DISASM───────────]
+   0x4005fa <main+4>     sub    rsp, 0x10
+   0x4005fe <main+8>     mov    rax, qword ptr fs:[0x28]
+   0x400607 <main+17>    mov    qword ptr [rbp - 8], rax
+   0x40060b <main+21>    xor    eax, eax
+   0x40060d <main+23>    mov    edi, 0x4006d4
+ ► 0x400612 <main+28>    call   puts@plt                      <0x4004b0>
+        s: 0x4006d4 ◂— 'ELF example'
+ 
+   0x400617 <main+33>    lea    rax, [rbp - 0xc]
+   0x40061b <main+37>    mov    rsi, rax
+   0x40061e <main+40>    mov    edi, 0x4006e0
+   0x400623 <main+45>    mov    eax, 0
+   0x400628 <main+50>    call   __isoc99_scanf@plt            <0x4004e0>
+[────────────STACK────────────]
+00:0000│ rsp  0x7fffffffdeb0 —▸ 0x7fffffffdfa0 ◂— 0x1
+01:0008│      0x7fffffffdeb8 ◂— 0x5a6d69cf5878bc00
+02:0010│ rbp  0x7fffffffdec0 —▸ 0x400650 (__libc_csu_init) ◂— push   r15
+03:0018│      0x7fffffffdec8 —▸ 0x7ffff7a2d830 (__libc_start_main+240) ◂— mov    edi, eax
+04:0020│      0x7fffffffded0 ◂— 0x0
+05:0028│      0x7fffffffded8 —▸ 0x7fffffffdfa8 —▸ 0x7fffffffe2bb ◂— 0x65642f656d6f682f ('/home/de')
+06:0030│      0x7fffffffdee0 ◂— 0x1f7ffcca0
+07:0038│      0x7fffffffdee8 —▸ 0x4005f6 (main) ◂— push   rbp
+[───────────BACKTRACE───────────]
+ ► f 0           400612 main+28
+   f 1     7ffff7a2d830 __libc_start_main+240
+Breakpoint *0x400612
+pwndbg> bl
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep n   0x00000000004005f6 <main>
+2       breakpoint     keep y   0x0000000000400612 <main+28>
+	breakpoint already hit 1 time
+3       breakpoint     keep y   0x0000000000400628 <main+50>
+pwndbg> 
+\end{lstlisting}
+
+\texttt{pwndbg} is packed with other neat commands that we'll go over as we come
+to the relevant exploits. It's worth spending some time getting comfortable
+working in \texttt{pwndbg}, as it's a very powerful tool for developing
+exploits.
+
+Below is a list of a few useful \texttt{pwndbg} commands. These are more than
+enough to get started using \texttt{pwndbg}.
+
+% TODO: find a place for stripped binaries (info files for entry point, main
+% address from _start args
+% TODO: use a binary with arguments to show argc / argv / telescope
+\begin{itemize}
+    \item context [registers / disassemmbly / stack / backtrace] - display
+        information on the program state
+    \item emulate / nearpc [address] - view disassembly near address or near the
+        program counter by default
+    \item argc - display number of program arguments
+    \item argv - display program arguments
+    \item db - display data as bytes
+    \item dw - display data as words
+    \item dd - display data as double words
+    \item dq - display data as quad words
+    % NOTE: ds is buggy on both dev and stable branches
+    \item ds - display data as strings
+    \item dps - resolve pointers
+    \item hexdump [address] - display hexdump of data at address
+    \item bp - set breakpoint
+    \item bd - disable breakpoint
+    \item be - enable breakpoint
+    \item bc - clear breakpoint
+    \item bl - list breakpoints
+\end{itemize}
