@@ -3,9 +3,9 @@ Materials for the IAP 2018 Reverse Engineering for Exploitation course.
 
 ## TODO
 
-* Rewrite challenges (and solutions) for 64-bit
 * Restructure notes to match new schedule
 * Laredo VMs / docker container for each student?
+* More day 1 exercises and ROP exercises
 
 ## Schedule
 1. Linux, ELF, and RE
