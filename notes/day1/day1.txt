@@ -1,4 +1,4 @@
-1. Language of Linux
+1. Linux, ELF, and RE
     * C Primer (recommended before class)
     * data sizes - bits / bytes / words / double words / giants
     * Binary, Hexadecimal, and 2's Complement
@@ -511,6 +511,6 @@ From here, we'll try some crackmes.
 
 https://github.com/snare/voltron
 
-*Encourage students to read up on linking and virtual memory. The link below is
+* Encourage students to read up on linking and virtual memory. The link below is
 a good exercise to understand dynamic linking.
 https://rafalcieslak.wordpress.com/2013/04/02/dynamic-linker-tricks-using-ld_preload-to-cheat-inject-features-and-investigate-programs/
