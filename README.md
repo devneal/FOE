@@ -1,5 +1,5 @@
-# REFE
-Materials for the IAP 2018 Reverse Engineering for Exploitation course.
+# FOE
+Materials for the IAP 2018 Fundamentals of Exploitation course.
 
 ## TODO
 
