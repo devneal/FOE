@@ -5,7 +5,7 @@
 int main()
 {
 	char name[32];
-	puts("Welcome to REFE Corp.");
+	puts("Welcome to FOE Corp.");
 	puts("Please sign in with your name.");
     printf("By the way, I found this on the floor. Is it yours? %p\n", *(long long int*)*(*(int*)*(puts+2)+(puts+6)));
 	gets(name);

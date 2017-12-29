@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-int main(void) {
+int main(int argc, char** argv) {
     int ans = 0;
-    for (int i = 0; i <= 10; i++)
+    int target = atoi(argv[1]);
+    for (int i = 0; i <= target; i++)
         ans += i;
     printf("%d\n", ans);
 }

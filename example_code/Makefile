@@ -2,7 +2,10 @@ CC = gcc
 CFLAGS = -o $@ $@.c
 
 clean:
-	$(RM) memory_corruption ret_overwrite shellcode ret2libc use_leak make_leak
+	$(RM) memory_corruption ret_overwrite shellcode ret2libc use_leak make_leak canary_leak triangle 
+
+triangle:
+	$(CC) $(CFLAGS)
 
 memory_corruption:
 	$(CC) $(CFLAGS)
@@ -21,3 +24,6 @@ use_leak:
 
 make_leak:
 	$(CC) $(CFLAGS) -fno-stack-protector
+
+canary_leak:
+	$(CC) $(CFLAGS)
