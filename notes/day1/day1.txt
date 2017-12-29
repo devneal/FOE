@@ -6,4 +6,4 @@
     * gdb                  - help, disassemble, break, run, x, display, etc.
 
 ==== Data Representations ====
-* Binary 
+* Binary
