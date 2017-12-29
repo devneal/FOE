@@ -4,7 +4,7 @@
 int main()
 {
 	char name[32];
-	puts("Welcome to REFE Corp.");
+	puts("Welcome to FOE Corp.");
 	puts("Please sign in with your name.");
 	puts("You tricked us last time with that planted pointer...we won't get fooled again.");
 	gets(name);
