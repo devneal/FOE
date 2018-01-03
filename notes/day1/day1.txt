@@ -1,9 +1,349 @@
 1. Understanding the Playing Field
-    * data representations - binary, hexadecimal, 2's complement, endianness
+    * data representations - binary, hexadecimal, 2's complement, endianness, ascii
     * computer model       - cpu, memory, registers, compilers, linkers
-    * x86 architecture     - x86, x86-64, assembly, stack, heap, memory layout
-    * examining binaries   - strings, readelf, objdump, symbols, sections, segments, got, plt
+    * x86 architecture     - x86 and x86-64, memory layout, calling convention, assembly
+    * elf anatomy          - symbols, sections, segments, got, plt, readelf, objdump, strings
     * gdb                  - help, disassemble, break, run, x, display, etc.
 
 ==== Data Representations ====
 * Binary
+Numbers in binary are written as a string of bits, each of which is scaled by a
+power of two. The rightmost bit is scaled by 2^0 or 1, and every other bit is
+scaled by twice as much as the one to its right.
+
+11111111(2) = 1 * 2^7 + 1 * 2^6 + 1 * 2^5 + 1 * 2^4 + 1 * 2^3 + 1 * 2^2 + 1 * 2^1 + 1 * 2^0
+            = 128 + 64 + 32 + 16 + 8 + 4 + 2 + 1
+            = 255
+11010110(2) = 1 * 2^7 + 1 * 2^6 + 0 * 2^5 + 1 * 2^4 + 0 * 2^3 + 1 * 2^2 + 1 * 2^1 + 0 * 2^0
+            = 128 + 64 + 0 + 16 + 0 + 4 + 2 + 0
+            = 214
+
+* Hexadecimal
+Every string of 4 bits can be represented with a unique hexadecimal digit. Since
+hexadecimal digits take values from 0-15, we use a-f as digits with values
+10-15. We denote hexadecimal numbers by adding an 0x prefix to them.
+
+hex digit values
+------+---------
+0 = 0 | 8 = 8
+1 = 1 | 9 = 9
+2 = 2 | a = 10
+3 = 3 | b = 11
+4 = 4 | c = 12
+5 = 5 | d = 13
+6 = 6 | e = 14
+7 = 7 | f = 15
+
+11010110(2) = 1101(2) * 16^1 + 0110 * 16^0
+            = 13 * 16^1 + 6 * 16^0
+            = 0xd6
+0xcb = 12 * 16^1 + 11 * 16^0
+     = 192 + 11
+     = 203
+
+* Two's Complement
+We use two's complement to handle negative numbers in binary. In two's
+complement, the leftmost bit is given a negative value. This changes the range
+of possible values from 0 - 2^n-1 to -2^{n-1} - 2^{n-1}-1.
+
+10000000(2) = 1 * -2^7 + 0 * 2^6 + 0 * 2^5 + 0 * 2^4 + 0 * 2^3 + 0 * 2^2 + 0 * 2^1 + 0 * 2^0
+            = -128 + 0 + 0 + 0 + 0 + 0 + 0 + 0
+            = -128
+01111111(2) = 0 * -2^7 + 1 * 2^6 + 1 * 2^5 + 1 * 2^4 + 1 * 2^3 + 1 * 2^2 + 1 * 2^1 + 1 * 2^0
+            = 0 + 64 + 32 + 16 + 8 + 4 + 2 + 1
+            = 127
+10100101(2) = 1 * -2^7 + 0 * 2^6 + 1 * 2^5 + 0 * 2^4 + 0 * 2^3 + 1 * 2^2 + 0 * 2^1 + 1 * 2^0
+            = -128 + 0 + 32 + 0 + 0 + 4 + 0 + 1
+            = -91
+
+* Machine Words
+A machine word refers to the number of bits that a computer reads and writes at
+a given time. Most modern computers have 64-bit machine words, and older ones
+have 32-bit machine words.
+
+* Endianness
+Endianness refers to the order in which the bytes of a machine word are stored
+in memory. Some computers store the bytes starting from the left and continuing
+to the right. This is called big-endian byte-order.
+
+In big-endian byte order, 0x080485a2 is stored as 0x08 0x04 0x85 0xa2.
+
+Most computers store bytes in little-endian byte order, where bytes start from
+the right and continue to the left.
+
+In little-endian byte order, 0x080485a2 is stored as 0xa2 0x85 0x04 0x08.
+
+* ASCII
+ASCII is a code which specifies values for all of the English characters, along
+with a few other characters used in computing. This allows computers to store
+letters in memory by storing their corresponding ASCII values. You can view the
+ASCII table by running "man ascii" from the command line.
+
+==== Computer Model ====
+* The CPU
+The CPU is the "brain" of the computer. It is responsible for reading and
+executing the instructions contained in a program. This typically involves
+reading and writing memory.
+
+* Memory
+Main memory, usually just referred to as memory, acts as a both a scratchpad for
+the CPU to use while executing programs and the place where the CPU reads
+program instructions. It also keeps track of function calls and recursion.
+
+* Registers
+Registers are small bits of memory located on the CPU. They have extremely low
+read and write times, but each one can typically only store a single machine
+word.
+
+* Compilers
+The program responsible for translating source code into machine code, producing
+an object file. These object files cannot be run until they have been linked.
+
+* Linkers
+The program responsible for combining object files into executables. There are
+two ways to perform linking:
+static linking - shared code is included in the binary at link time
+dynamic linking - shared code is located and used at runtime
+
+==== x86 Architecture ====
+* x86 and x86-64
+All computers abide by an architecture, a set of rules specifying their
+functionality and implementation. x86 is the most popular 32-bit architecture,
+and x86-64 is the most popular 64-bit architecture.
+
+x86 specifies 10 registers:
+eax, ecx, edx, ebx, esp, ebp, esi, edi, eip, and eflags.
+All of them but eip and eflags are general-purpose registers, so they
+can technically be used however the programmer wants. That said, they have
+conventional uses.
+eax (accumulator) - used to store function return values
+esp (stack pointer) - points to the top of the current stack frame
+ebp (base pointer) - points to the bottom of the current stack frame
+eip (instruction pointer) - points to the next instruction that the CPU will
+execute
+eflags (flags register) - contains several single-bit flags that describe the
+state of the CPU
+
+Some parts of each register can be manipulated independently of others. The
+lower 16 bits of eax are referred to as ax. The lower 8 bits of ax are referred
+to as al, and the higher 8 bits of ax are referred to as ah. There is a similar
+naming convention for ecx, edx, and ebx.
+
+x86-64 extends the above x86 registers to 64 bits, replacing the 'e' prefixes
+with 'r' prefixes (i.e. rax, rflags, etc.). It also adds eight more
+general-purpose registers (r8-r15) and eight 128-bit XMM registers.
+
+* Memory Layout
+Memory in a running program is divided into the following chunks, each of
+which has a different purpose.
+.text - holds program instructions, never writable
+.data - initialized global/static variables
+.bss  - uninitialized global/static variables
+heap  - segment for dynamic memory allocation
+stack - segment for local variables and function calls
+
+There is no set convention for the orientation of the stack in when we diagram
+it, but in order to be consistent with the view of memory we get in the
+terminal, we will draw memory with lower addresses at the top and higher
+addresses at the bottom.
+
+* Assembly
+A CPU can only execute instructions written in machine code, but machine code is
+unfortunately rather difficult to read. Instead we read assembly, a
+human-readable representation of machine code. Being familiar reading machine
+code will be invaluable while trying to understand and exploit programs, so it
+will be useful to learn a few of the most common instructions.
+
+** Intel vs AT&T
+Assembly can be written in one of two ways: Intel syntax and AT&T syntax. Both
+have the same instruction set and convey the same information, but most people
+find it easier to read Intel syntax. In this class we will use Intel syntax.
+
+If you ever find yourself reading some assembly in the read world, you'll be
+able to identify AT&T syntax by the slew of % and $ characters everywhere.
+
+** Common Assembly Instructions
+Intel assembly instructions typically have one of two forms:
+1) <instruction> <destination>, <source>
+2) <instruction> <argument>
+
+*** Reading and Writing Data
+1) mov <destination>, <source> - write data at source to destination
+2) push <source> - decrement the stack pointer, then write from source to the
+   top of the stack
+3) pop <destination> - write from the top of the stack to destination,
+   then inrement the stack pointer
+
+*** Manipulating Data
+1) add  <arg1>, <arg2> - write arg1 + arg2 to arg1
+2) sub  <arg1>, <arg2> - write arg1 - arg2 to arg1
+3) imul <arg>          - write rax * arg to rdx:rax
+4) idiv <arg>          - compute rax / arg, write quotient to rax, and write
+                         remainder to rdx
+5) and  <arg1>, <arg2> - write arg1 & arg2 to arg1
+6) or   <arg1>, <arg2> - write arg1 | arg2 to arg1
+7) xor  <arg1>, <arg2> - write arg1 ^ arg2 to arg1
+
+*** Control Flow
+1) call <address> - push the address of the next instruction, then move address
+                    into rip
+2) ret            - move the address at the top of the stack into rip, then
+                    increment stack pointer
+3) jmp - unconditional jump
+4) je  - jump if equal (to zero)
+5) jne - jump if not equal (to zero)
+6) jl  - jump if less (than zero)
+7) jle - jump if less than or equal (to zero)
+8) jg  - jump if greater (than zero)           
+9) jge - jump if greater than or equal (to zero)
+10) cmp - perform subtraction, but ignore the result (only set rflags)
+11) test - perform and, but ignore the result (only set rflags)
+
+*** Extra
+1) nop - do absolutely nothing
+
+Each of the jump instructions redirects execution only if rflags meets a certain
+condition. They are typically used after a cmp or test instruction.
+
+** Addressing memory 
+When an assembly instruction references memory, it must specify both the
+address and size of that memory. The syntax for this is <size> PTR [<addr>].
+
+<size> is one of:
+BYTE - 1 byte
+WORD - 2 bytes
+DWORD - 4 bytes
+QWORD - 8 bytes
+
+An example instruction is "mov QWORD PTR [rbp-0x8], rax".
+You now know enough to understand the following assembly snippet:
+
+40052e: mov DWORD PTR [rbp-0x8],0x0
+400535: mov DWORD PTR [rbp-0x4],0x0
+40053c: jmp 400548
+40053e: mov eax,DWORD PTR [rbp-0x4]
+400541: add DWORD PTR [rbp-0x8],eax
+400544: add DWORD PTR [rbp-0x4],0x1
+400548: cmp DWORD PTR [rbp-0x4],0xa
+40054c: jle 40053e
+
+* Calling Convention
+The stack is used to handle nested function calls. In order to do so, functions
+follow a calling convention which outlines instructions for both the caller and
+the callee. The calling convention for x86 is as follows:
+
+The caller will:
+1) Prepare the callee's arguments by either loading them into registers (x86-64)
+    or pushing them onto the stack (x86)
+2) Execute the call instruction to jump to the new function and push the address
+    of the next instruction onto the stack
+3) After the callee returns, clear the stack of any callee arguments
+
+At the start of execution, the callee will complete the following tasks, called
+the function prologue:
+1) Push the caller's base pointer onto the stack
+2) Move the base pointer to point to the caller's saved base pointer
+3) Subtract from the stack pointer to make room for any local variables
+
+At the end of execution, the callee will complete the following tasks,
+called the function epilogue:
+1) Leave the return value in the accumulator
+2) Move the stack pointer to point to the caller's saved base pointer
+3) Restore the caller's base pointer by popping it off of the stack
+4) Execute the ret instruction to return control to the caller
+
+Note that the function epilogue essentially undoes the work of the function
+prologue. This leaves the caller's stack intact after the callee returns, even
+if the callee makes other function calls during its execution.
+
+==== ELF Anatomy ====
+* Tools
+
+These commands are useful for getting information from an ELF binary:
+* strings <file>              - list all ASCII strings within file (add -tx to
+                                include the offset within file)
+* file <file>                 - list information about file
+* readelf --file-header <elf> - list general information about elf
+* readelf --symbols <elf>     - list symbols within elf
+* readelf --sections <elf>    - list sections within elf
+* readelf --segments <elf>    - list segments within elf
+* objdump -d <elf>            - display disassembly within elf
+
+Whenever you compile a program with gcc, the resulting binary is in Executable
+and Linkable Format. We call these ELF binaries or ELFs. ELF binaries can be
+hierarchically grouped into of symbols, sections, and segments.
+
+* PLT and GOT
+Together, the PLT and GOT allow ELF binaries to dynamically locate shared data
+in a process called resolution.
+
+The first time a function is called, execution jumps from the PLT to the GOT
+back to the PLT, where the function is resolved and the GOT is filled with its
+address.
+
+Subsequent function calls jump from the PLT to the GOT then to the function's
+actual code.
+
+You can view the PLT with "objdump -d -j .plt <elf>"
+You can view the GOT with "readelf --relocs <elf>"
+
+    prog:                              GOT:
+    +------------------+               +-----------------+
+    | ...              |               | ...             |
+    | call printf@plt -------+   +-----> GOT[n]: <addr> ------+
+    | ...              |     |   |     | ...             |    |
+    | ...              |     |   |     +-----------------+    |
+    +------------------+     |   |                            |
+                             |   |                            |
+    PLT:                     |   |                            |
+    +--------------------+   |   |                            |
++---> PLT[0]:            |   |   |                            |
+|   |   call resolver    |   |   |                            |
+|   | ...                |   |   |                            |
+|   | PLT[n]: <--------------+   |                            |
+|   |   jmp *GOT[n] -------------+                            |
+|   |   prepare resolver <------------------------------------+
++------ jmp PLT[0]       |
+    | ...                |
+    +--------------------+
+
+==== GDB ====
+Running a program under a debugger such as GDB allows us to pause and inspect
+every aspect of its execution as it happens. This is extremely useful for
+both learning about and exploiting programs. To start a program under gdb, run
+"gdb <program>".
+
+It's useful to have a few survival gdb commands to get started. These can get
+you pretty far:
+
+* help             - get information on how to use a command
+* disassemble      - show disassembly of a function
+* break            - set a breakpoint
+* info breakpoints - display breakpoint status
+* run              - run the program from the beginning
+* where            - display your current location
+* info registers   - display register status
+* x                - examine memory
+* display          - display memory at each breakpoint
+* nexti            - execute an instruction without following jumps / calls
+* stepi            - execute an instruction following jumps / calls
+* return           - continue execution until the current stack frame returns
+* continue         - resume execution from a breakpoint
+
+We'll walk through the execution of example_elf, and go over each of the above
+commands while doing so.
+
+Memory Layout:
+https://www.geeksforgeeks.org/memory-layout-of-c-program/
+
+ELF Format:
+http://www.skyfree.org/linux/references/ELF_Format.pdf
+
+ELF Image:
+https://github.com/simar7/csci4968/blob/master/resources/ELF-Walkthrough.png
+
+Intel Documentation:
+https://software.intel.com/en-us/articles/intel-sdm
+
+GDB Cheatsheet:
+http://darkdust.net/files/GDB%20Cheat%20Sheet.pdf

@@ -4,6 +4,9 @@ CFLAGS = -o $@ $@.c
 clean:
 	$(RM) memory_corruption ret_overwrite shellcode ret2libc use_leak make_leak canary_leak triangle 
 
+example_elf:
+	$(CC) $(CFLAGS)
+
 triangle:
 	$(CC) $(CFLAGS)
 
