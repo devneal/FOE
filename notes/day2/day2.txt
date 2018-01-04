@@ -4,7 +4,194 @@
     * memory corruption - overwriting variables, overwriting return address, shellcode exploit
 
 ==== pwntools ====
+pwntools is an exploit development framework written in python. It consists of
+several modules, each of which makes a given task much easier. We'll be using
+the pwnlib.tubes and pwnlib.util modules heavily in this class.
+
+* pwnlib.tubes.process
+This module is used to communicate with programs. It contains the process
+object, which allows us to programmatically interface with running processes.
+Useful functions include:
+
+** send                  - sends data
+** sendline              - like send, but appends a newline before sending
+** read / recv           - receive data
+** readline / recvline}  - receive data until a newline is found and return it
+** readuntil / recvuntil - receive data until the specified string is found, and
+                           return it
+** readregex / recvregex - receive data until the specified regex is matched,
+                           then return it
+
+>>> p = process("cat")
+>>> p.send("hello")
+>>> p.read()
+'hello'
+>>> p.sendline("goodbye")
+>>> p.readuntil("by")
+'goodby'
+>>> p.readline()
+'e\n'
+>>> p.shutdown()
+>>> p = process(["echo", "test", "string"]) 
+>>> p.readregex(".*str")
+'test str'
+>>> p.readline()
+'ing\n'
+
+* pwnlib.util
+This module provides several convenient functions for manipulating data. Here
+are a few of the most popular ones:
+
+** enhex - convert an ASCII string to hexadecimal
+** unhex - convert a hexadecimal string to ASCII
+** p64   - pack an integer into a 64-bit machine word
+** u64   - unpack a 64-bit machine word into an integer
+
+>>> s = "pwntools is awesome"
+>>> s_hex = enhex(s)
+>>> s_hex
+'70776e746f6f6c7320697320617765736f6d65'
+>>> unhex(s_hex) == s
+True
+>>>
+>>> val = 0xffffdeadbeefffff
+>>> data = p64(val)
+>>> data
+'\xff\xff\xef\xbe\xad\xde\xff\xff'
+>>> val == u64(data)
+True
 
 ==== pwndbg ====
+pwndbg is an extension to gdb to make exploitation easier. Once installed, it
+runs automatically when gdb is started. Some of the most useful pwndbg commands
+are:
+
+context [registers / disassembly / stack / backtrace] - display
+        information on the program state
+emulate / nearpc [address] - view disassembly near address (or near
+        the program counter by default)
+argc              - display number of program arguments
+argv              - display program arguments
+db                - display data as bytes
+dw                - display data as words
+dd                - display data as double words
+dq                - display data as quad words
+ds                - display data as strings
+dps               - resolve pointers
+hexdump [address] - display hexdump of data at address
+bp                - set breakpoint
+bl                - list breakpoints
+bd                - disable breakpoint
+be                - enable breakpoint
+bc                - clear breakpoint
+
+We'll walk through the execution of example_elf again, this time going over each
+of the above commands while doing so.
 
 ==== Memory Corruption ====
+Since local buffers and local variables are both stored on the stack, they are
+near each other in memory. This can cause problems if too much data is written
+to a buffer, as the excess data will be written to any variables beneath it (at
+a higher address). This concept is best understood with an example.
+
+** memory_corruption
+* view source and disassembly for memory_corruption.c
+* send inputs of size 64 and 65 on the command line (pipes + alt)
+* analyze 65 byte input in gdb, mentioning how endianness affects the view
+* overwrite the token to call win() from gdb
+* let students call win with a script
+* call win from the command line
+
+** ret_overwrite
+* view source, show that memory_corruption exploit fails, and explain why (order
+  of variables switched)
+* send gradually longer inputs, including length 80 and 79
+* analyze length 80 input in gdb, show clobbered return address (before + after)
+* call win from within gdb
+* let students call win from a script
+* call win from the command line
+* use readelf --symbols to call other functions from the command line
+* chain calls, ask for explanation
+
+We can use shellcode to execute arbitrary instructions, rather than just the
+instructions in the program. The idea is to include machine code in our input,
+then overwrite the return address with the location of the shellcode. We can't
+determine the shellcode's location exactly however, so we will add a nop sled
+and guess several offsets.
+
++----------------+
+|                |
+|                |
+|    nop sled    |<---+
+|                |    |
+|                |    |
++----------------+    |
+|                |    |
+|  machine code  |    |
+|                |    |
++----------------+    |
+| return address |----+
++----------------+
+
+We can get machine code directly from pwntools, and the approximate buffer
+address from gdb.
+
+>>> from pwn import *
+>>> context.arch = "amd64"
+>>> shellcode = shellcraft.sh()
+>>> print shellcode
+    /* execve(path='/bin///sh', argv=['sh'], envp=0) */
+    /* push '/bin///sh\x00' */
+    push 0x68
+    mov rax, 0x732f2f2f6e69622f
+    push rax
+    mov rdi, rsp
+    /* push argument array ['sh\x00'] */
+    /* push 'sh\x00' */
+    push 0x1010101 ^ 0x6873
+    xor dword ptr [rsp], 0x1010101
+    xor esi, esi /* 0 */
+    push rsi /* null terminate */
+    push 8
+    pop rsi
+    add rsi, rsp
+    push rsi /* 'sh\x00' */
+    mov rsi, rsp
+    xor edx, edx /* 0 */
+    /* call execve() */
+    push SYS_execve /* 0x3b */
+    pop rax
+    syscall
+
+>>> shell = run_assembly(shellcode)
+[*] '/tmp/pwn-asm-EIMiA2/step3'
+    Arch:     amd64-64-little
+    RELRO:    No RELRO
+    Stack:    No canary found
+    NX:       NX disabled
+    PIE:      No PIE (0x10000000)
+    RWX:      Has RWX segments
+[x] Starting local process '/tmp/pwn-asm-EIMiA2/step3'
+[+] Starting local process '/tmp/pwn-asm-EIMiA2/step3': pid 22248
+>>> shell.interactive()
+[*] Switching to interactive mode
+whoami
+devneal
+exit
+[*] Got EOF while reading in interactive
+
+[*] Process '/tmp/pwn-asm-EIMiA2/step3' stopped with exit code 0 (pid 22248)
+[*] Got EOF while sending in interactive
+>>> asm(shellcode)
+'jhH\xb8/bin///sPH\x89\xe7hri\x01\x01\x814\$\x01\x01\x01\x011\xf6Vj\x08^H\x01\xe6VH\x89\xe61\xd2j;X\x0f\x05'
+>>> 
+
+** shellcode
+* make sure aslr is disabled!
+* showcase shellcraft and asm modules
+* write script to print payload with no nop sled, shellcode + padding + deadbeef
+  (remember to set context.arch = "amd64")
+* get approximate buffer address from gdb
+* show that exploit fails
+* add skeleton with nop sled and guess offsets
+* let students finish the exploit

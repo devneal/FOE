@@ -230,7 +230,16 @@ You now know enough to understand the following assembly snippet:
 * Calling Convention
 The stack is used to handle nested function calls. In order to do so, functions
 follow a calling convention which outlines instructions for both the caller and
-the callee. The calling convention for x86 is as follows:
+the callee.
+
+The only difference between the x86 and x86-64 calling conventions is the way in
+which arguments are passed to the callee.  For x86, the arguments are simply
+pushed onto the stack in reverse order. For x86-64, the first six integer and
+pointer arguments are loaded into rdi, rsi, rdx, rcx, r8, and r9, in that order.
+The first 8 double and float arguments are loaded into xmm0-xmm7 in order. Any
+additional arguments are pushed onto the stack in reverse order.
+
+The calling convention for x86 is as follows:
 
 The caller will:
 1) Prepare the callee's arguments by either loading them into registers (x86-64)

