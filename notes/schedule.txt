@@ -9,10 +9,11 @@
     * pwndbg            - context, nearpc, argc, argv, display (db, dw, dd, dq, ds), break (bp, bd, be, bc, bl)
     * memory corruption - overwriting variables, overwriting return address, shellcode exploit
 3. DEP, ROP, and ret2libc
-    * dep, ret2libc, rop given leak
-    * aslr, rop without leak
+    * mitigations
+    * dep, ret2libc
+    * aslr, rop given leak
+    * got/plt, rop without leak
 4. Canaries, GOT+PLT
     * canaries, canary leak
     * GOT+PLT, GOT overwrite
-    * brop canary(?)
 5. Challenges

