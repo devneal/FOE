@@ -15,5 +15,4 @@
     * got/plt, rop without leak
 4. Canaries, GOT+PLT
     * canaries, canary leak
-    * GOT+PLT, GOT overwrite
 5. Challenges

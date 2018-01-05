@@ -1,3 +1,39 @@
 4. Canaries, GOT+PLT
+    * got/plt, rop without leak
     * canaries, canary leak
-    * GOT+PLT, GOT overwrite
+
+==== GOT and PLT ====
+The plt is a list of code stubs, one for each shared library function and one
+more to resolve them. Each stub for a shared library contains a jump into the
+got followed by a section to prepare and jump to the resolver.
+
+The got initially contains a bunch of pointers back into the plt, one for each
+shared library function. They point at the sections which prepare and jump to
+the resolver.
+
+The resolver locates, or resolves, a shared library based on its arguments
+(prepared by the plt), writes its location to the got, and calls the function.
+Therefore subsequent function calls will not go through the resolver.
+
+In order for this to work, the got must be writable. This makes it a prime
+candidate target for exploitation.
+
+** make_leak
+* view source code (file and checksec), ask for exploitation suggestions
+* explain the plan in detail:
+  1) read() puts() address from the got
+  2) return to main()
+  3) ret2libc as before
+* find puts@plt with objdump -d -j .plt (or pwndbg)
+* find puts@got with readelf --relocs (or pwndbg)
+* let students spawn the shell
+
++----------------+
+|  pop rdi; ret  |
++----------------+
+|    puts@got    |
++----------------+
+|    puts@plt    |
++----------------+
+|      main      |
++----------------+
