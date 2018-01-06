@@ -5,14 +5,15 @@
     * examining binaries   - strings, readelf, objdump, symbols, sections, segments, got, plt
     * gdb                  - help, disassemble, break, run, x, display, etc.
 2. Tools of the Trade, Memory Corruption, Shellcoding
-    * pwntools          - tubes, ssh, process, util, enhex, unhex, ordlist, unordlist, p64, u64
-    * pwndbg            - context, nearpc, argc, argv, display (db, dw, dd, dq, ds), break (bp, bd, be, bc, bl)
+    * pwntools          - tubes, ssh, process, util, enhex, unhex, p64, u64
+    * pwndbg            - context, nearpc, stack, display (db, dw, dd, dq, ds, dps), break (bp, bd, be, bc, bl)
     * memory corruption - overwriting variables, overwriting return address, shellcode exploit
 3. DEP, ROP, and ret2libc
-    * mitigations
-    * dep, ret2libc
+    * mitigations - DEP/NX, ASLR, canaries, (full) relro, PIC/PIE, fortify source
+    * dep, ret2libc, x86 vs x86-64
     * aslr, rop given leak
-    * got/plt, rop without leak
 4. Canaries, GOT+PLT
+    * a word on reverse engineering
+    * got/plt, rop without leak
     * canaries, canary leak
 5. Challenges

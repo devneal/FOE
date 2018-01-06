@@ -1,6 +1,6 @@
 3. DEP, ROP, and ret2libc
     * mitigations
-    * dep, ret2libc
+    * dep, ret2libc, x86 vs x86-64
     * aslr, rop given leak
 
 ==== Mitigations ====
@@ -34,6 +34,10 @@ library code while PIE is for executables
 Adds additional checks at compile and/or runtime, but may violate code
 conformity
 
+Something to be aware of: most functions to read input will stop when they
+encounter a whitespace character. Keep this in mind when writing exploits, and
+check "man ascii" when in doubt.
+
 ==== DEP and ROP ====
 Return-Oriented Programming (ROP) is an exploit technique to bypass DEP. Rather
 than inject shellcode into the program, we overwrite the return address with one
@@ -63,6 +67,76 @@ We also find a "pop ret" gadget so that we can pass "/bin/sh" as the argument.
 
 This particular ROP technique is called return-to-libc (ret2libc) since we spawn
 the shell by returning to a libc function.
+
+** ret2libc_32
+* view source
+* explain the difference in calling convention and the modified plan
+* let the students spawn the shell
+
++----------------+
+|     system     |
++----------------+
+|    padding     |
++----------------+
+|   "/bin/sh"    |
++----------------+
+
+Chaining rop gadgets is different in x86 vs x86-64. An x86 rop chain has the
+form
+
++----------------+
+|   function 1   |
++----------------+
+|  pop-pop-ret   |
++----------------+
+|     arg 1      |
++----------------+
+|     arg 2      |
++----------------+
+        + 
++----------------+
+|   function 2   |
++----------------+
+| pop-pop-pop-ret|
++----------------+
+|     arg 1      |
++----------------+
+|     arg 2      |
++----------------+
+|     arg 3      |
++----------------+
+        +
++----------------+
+|      ...       |
++----------------+
+
+While an x86-64 rop chain has the form
+
++--------------------------------+
+|     pop rdi; pop rsi; ret      |
++--------------------------------+
+|            arg 1               |
++--------------------------------+
+|            arg 2               |
++--------------------------------+
+|          function 1            |
++--------------------------------+
+               + 
++--------------------------------+
+| pop rdi; pop rsi; pop rdx; ret |
++--------------------------------+
+|            arg 1               |
++--------------------------------+
+|            arg 2               |
++--------------------------------+
+|            arg 3               |
++--------------------------------+
+|          function 2            |
++--------------------------------+
+               +
++--------------------------------+
+|             ...                |
++--------------------------------+
 
 ==== ASLR ====
 Although ASLR randomizes the locations of the stack, heap, and shared libraries,

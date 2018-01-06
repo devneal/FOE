@@ -1,6 +1,6 @@
 2. Tools of the Trade, Memory Corruption, Shellcoding
-    * pwntools          - tubes, process, util, enhex, unhex, p64, u64
-    * pwndbg            - context, nearpc, stack, display (db, dw, dd, dq, ds), break (bp, bd, be, bc, bl)
+    * pwntools          - tubes, ssh, process, util, enhex, unhex, p64, u64
+    * pwndbg            - context, nearpc, stack, display (db, dw, dd, dq, ds, dps), break (bp, bd, be, bc, bl)
     * memory corruption - overwriting variables, overwriting return address, shellcode exploit
 
 ==== pwntools ====
@@ -70,15 +70,13 @@ context [registers / disassembly / stack / backtrace] - display
         information on the program state
 emulate / nearpc [address] - view disassembly near address (or near
         the program counter by default)
-argc              - display number of program arguments
-argv              - display program arguments
+stack             - display the stack and resolve pointers it contains
 db                - display data as bytes
 dw                - display data as words
 dd                - display data as double words
 dq                - display data as quad words
 ds                - display data as strings
 dps               - resolve pointers
-hexdump [address] - display hexdump of data at address
 bp                - set breakpoint
 bl                - list breakpoints
 bd                - disable breakpoint
