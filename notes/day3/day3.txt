@@ -1,6 +1,7 @@
 3. DEP, ROP, and ret2libc
-    * mitigations
-    * dep, ret2libc, x86 vs x86-64
+    * mitigations - DEP/NX, ASLR, canaries, (full) relro, PIC/PIE, fortify source
+    * dep, ret2libc, x86 vs x86-64, ret2libc_32
+    * execve(), (srop)
     * aslr, rop given leak
 
 ==== Mitigations ====
@@ -137,6 +138,37 @@ While an x86-64 rop chain has the form
 +--------------------------------+
 |             ...                |
 +--------------------------------+
+
+==== execve() and SROP ====
+If a binary is not linked to system(), we can still spawn a shell by invoking
+the execve() syscall. The value in rax specifies the syscall, and the arguments
+are loaded into registers. The syscall is then invoked by executing the int
+0x80 instruction for x86, or the syscall instruction for x86-64.
+
+Under x86, the registers for syscall arguments are, in order:
+ebx, ecx, edx, esi, edi
+
+Under x86-64, the registers for syscall arguments are, in order:
+rdi, rsi, rdx, r10, r8, r9
+
+In order to write the arguments into registers, we typically use a "pop ret"
+gadget, followed by the arguments we wish to write. For example, the following
+gadget will write 0x3b (the syscall number for execve()) to rax:
+
++--------------------------------+
+|address of pop rax ; ret gadget |
++--------------------------------+
+|              0x3b              |
++--------------------------------+
+
+After using gadgets like the one above to specify all of the syscall arguments,
+we can use a syscall (or int 0x80 on x86) instruction to invoke the syscall.
+
+**syscall
+* view source, point out lack of system() call
+* find a gadget to write 59 (0x3b) to rax
+* let students spawn the shell
+* brief mention of SROP
 
 ==== ASLR ====
 Although ASLR randomizes the locations of the stack, heap, and shared libraries,

@@ -1,8 +1,8 @@
 1. Understanding the Playing Field
-    * data representations - binary, hexadecimal, 2's complement, endianness, ascii
+    * data representations - binary, hexadecimal, 2's complement, endianness
     * computer model       - cpu, memory, registers, compilers, linkers
-    * x86 architecture     - x86 and x86-64, memory layout, calling convention, assembly
-    * elf anatomy          - symbols, sections, segments, got, plt, readelf, objdump, strings
+    * x86 architecture     - x86, x86-64, assembly, stack, heap, memory layout
+    * examining binaries   - strings, readelf, objdump, symbols, sections, segments, got, plt
     * gdb                  - help, disassemble, break, run, x, display, etc.
 
 ==== Data Representations ====
@@ -34,7 +34,7 @@ hex digit values
 6 = 6 | e = 14
 7 = 7 | f = 15
 
-11010110(2) = 1101(2) * 16^1 + 0110 * 16^0
+11010110(2) = 1101(2) * 16^1 + 0110(2) * 16^0
             = 13 * 16^1 + 6 * 16^0
             = 0xd6
 0xcb = 12 * 16^1 + 11 * 16^0
@@ -131,7 +131,7 @@ naming convention for ecx, edx, and ebx.
 
 x86-64 extends the above x86 registers to 64 bits, replacing the 'e' prefixes
 with 'r' prefixes (i.e. rax, rflags, etc.). It also adds eight more
-general-purpose registers (r8-r15) and eight 128-bit XMM registers.
+general-purpose registers (r8-r15) and eight 128-bit xmm registers (xmm0-7).
 
 * Memory Layout
 Memory in a running program is divided into the following chunks, each of
@@ -169,9 +169,11 @@ Intel assembly instructions typically have one of two forms:
 
 *** Reading and Writing Data
 1) mov <destination>, <source> - write data at source to destination
-2) push <source> - decrement the stack pointer, then write from source to the
+2) lea <destination>, [<address>] - writes address to destination WITHOUT
+   dereferencing
+3) push <source> - decrement the stack pointer, then write from source to the
    top of the stack
-3) pop <destination> - write from the top of the stack to destination,
+4) pop <destination> - write from the top of the stack to destination,
    then inrement the stack pointer
 
 *** Manipulating Data
@@ -187,17 +189,19 @@ Intel assembly instructions typically have one of two forms:
 *** Control Flow
 1) call <address> - push the address of the next instruction, then move address
                     into rip
-2) ret            - move the address at the top of the stack into rip, then
+2) leave          - an alias for "mov esp, ebp; pop ebp" used before returning
+                    from a function
+3) ret            - move the address at the top of the stack into rip, then
                     increment stack pointer
-3) jmp - unconditional jump
-4) je  - jump if equal (to zero)
-5) jne - jump if not equal (to zero)
-6) jl  - jump if less (than zero)
-7) jle - jump if less than or equal (to zero)
-8) jg  - jump if greater (than zero)           
-9) jge - jump if greater than or equal (to zero)
-10) cmp - perform subtraction, but ignore the result (only set rflags)
-11) test - perform and, but ignore the result (only set rflags)
+4) jmp - unconditional jump
+5) je  - jump if equal (to zero)
+6) jne - jump if not equal (to zero)
+7) jl  - jump if less (than zero)
+8) jle - jump if less than or equal (to zero)
+9) jg  - jump if greater (than zero)           
+10) jge - jump if greater than or equal (to zero)
+11) cmp - perform subtraction, but ignore the result (only set rflags)
+12) test - perform and, but ignore the result (only set rflags)
 
 *** Extra
 1) nop - do absolutely nothing
@@ -210,8 +214,8 @@ When an assembly instruction references memory, it must specify both the
 address and size of that memory. The syntax for this is <size> PTR [<addr>].
 
 <size> is one of:
-BYTE - 1 byte
-WORD - 2 bytes
+BYTE  - 1 byte
+WORD  - 2 bytes
 DWORD - 4 bytes
 QWORD - 8 bytes
 
@@ -226,6 +230,8 @@ You now know enough to understand the following assembly snippet:
 400544: add DWORD PTR [rbp-0x4],0x1
 400548: cmp DWORD PTR [rbp-0x4],0xa
 40054c: jle 40053e
+
+The above snippet writes the sum of 0-10 to DWORD PTR [rbp-0x8].
 
 * Calling Convention
 The stack is used to handle nested function calls. In order to do so, functions
@@ -254,12 +260,18 @@ the function prologue:
 2) Move the base pointer to point to the caller's saved base pointer
 3) Subtract from the stack pointer to make room for any local variables
 
+push rbp
+mov rbp, rsp
+
 At the end of execution, the callee will complete the following tasks,
 called the function epilogue:
 1) Leave the return value in the accumulator
 2) Move the stack pointer to point to the caller's saved base pointer
 3) Restore the caller's base pointer by popping it off of the stack
 4) Execute the ret instruction to return control to the caller
+
+mov rsp, rbp          or          leave 
+pop rbp
 
 Note that the function epilogue essentially undoes the work of the function
 prologue. This leaves the caller's stack intact after the callee returns, even
@@ -281,6 +293,10 @@ These commands are useful for getting information from an ELF binary:
 Whenever you compile a program with gcc, the resulting binary is in Executable
 and Linkable Format. We call these ELF binaries or ELFs. ELF binaries can be
 hierarchically grouped into of symbols, sections, and segments.
+
+* symbols are named addresses which are used by the linker
+* sections are groups of symbols
+* segments are groups of sections
 
 * PLT and GOT
 Together, the PLT and GOT allow ELF binaries to dynamically locate shared data
@@ -316,6 +332,8 @@ You can view the GOT with "readelf --relocs <elf>"
     | ...                |
     +--------------------+
 
+* objdump provides an easy way to view a program's disassembly
+
 ==== GDB ====
 Running a program under a debugger such as GDB allows us to pause and inspect
 every aspect of its execution as it happens. This is extremely useful for
@@ -325,16 +343,17 @@ both learning about and exploiting programs. To start a program under gdb, run
 It's useful to have a few survival gdb commands to get started. These can get
 you pretty far:
 
-* help             - get information on how to use a command
 * disassemble      - show disassembly of a function
+* help             - get information on how to use a command
 * break            - set a breakpoint
-* info breakpoints - display breakpoint status
 * run              - run the program from the beginning
 * where            - display your current location
-* info registers   - display register status
 * x                - examine memory
-* display          - display memory at each breakpoint
 * nexti            - execute an instruction without following jumps / calls
+* display          - display memory at each breakpoint
+* info registers   - display register status
+* info breakpoints - display breakpoint status
+* set              - set variables
 * stepi            - execute an instruction following jumps / calls
 * return           - continue execution until the current stack frame returns
 * continue         - resume execution from a breakpoint
@@ -343,7 +362,7 @@ We'll walk through the execution of example_elf, and go over each of the above
 commands while doing so.
 
 Memory Layout:
-https://www.geeksforgeeks.org/memory-layout-of-c-program/
+https://en.wikipedia.org/wiki/Data_segment
 
 ELF Format:
 http://www.skyfree.org/linux/references/ELF_Format.pdf

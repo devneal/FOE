@@ -3,7 +3,7 @@ CFLAGS = -o $@
 
 clean:
 	$(RM) core example_elf memory_corruption ret_overwrite shellcode ret2libc \
-	      ret2libc_32 use_leak make_leak canary_leak triangle 
+	      ret2libc_32 syscall use_leak make_leak canary_leak triangle
 
 example_elf:
 	$(CC) $(CFLAGS) $@.c
@@ -25,6 +25,9 @@ ret2libc:
 
 ret2libc_32:
 	$(CC) $(CFLAGS) $@.c -fno-stack-protector -static -m32
+
+syscall:
+	$(CC) $(CFLAGS) $@.c -fno-stack-protector -static
 
 use_leak:
 	$(CC) $(CFLAGS) $@.c -fno-stack-protector

