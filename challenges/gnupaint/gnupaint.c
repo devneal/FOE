@@ -70,6 +70,7 @@ void pen_tool() {
     update(image, x, y, val);
 
     puts("Updated");
+    return;
 no:
     puts("Invalid coordinate");
 }
