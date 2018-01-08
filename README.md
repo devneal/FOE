@@ -1,9 +1,6 @@
 # FOE
 Materials for the IAP 2018 Fundamentals of Exploitation course.
 
-## TODO
-* More day 1 exercises
-
 ## Schedule
 1. Understanding the Playing Field
     * data representations - binary, hexadecimal, 2's complement, endianness
