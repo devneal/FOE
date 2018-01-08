@@ -191,7 +191,6 @@ void menu()
 
    do {
       printf("MENU:\n\n0) exit\n1) take note\n2) read note\n3) add day\n$ ");
-      fflush(stdout);
       choice = get_digit(4);
       if (choice != 0) {
          menu_options[choice - 1]();
@@ -202,6 +201,9 @@ void menu()
 int main(int argc, char* argv[])
 {
    unsigned i;
+   // unbuffered I/O
+   setvbuf(stdin, NULL, _IONBF, 0);
+   setvbuf(stdout, NULL, _IONBF, 0);
 
    for (i=0; i < 5; ++i) {
       printf("Day %u - %s\n===================================================\n"

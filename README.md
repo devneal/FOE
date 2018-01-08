@@ -1,67 +1,24 @@
 # FOE
 Materials for the IAP 2018 Fundamentals of Exploitation course.
 
-## TODO
-
-* Restructure notes to match new schedule
-* Laredo VMs / docker container for each student?
-* More day 1 exercises and ROP exercises
-
 ## Schedule
-1. Linux, ELF, and RE
-    * LD_PRELOAD / LD_LIBRARY_PATH (?)
-    * Assembly Primer (reading only)
-        * Registers
-        * cdecl
-    * ELF Format
-        * ELF-Walkthrough.png
-        * readelf
-        * objdump
-        * nm
-    * Reverse Engineering Tools
-        * file
-        * objdump
-        * strings
-        * strace, ltrace, xtrace
-        * shellnoob
-        * hex editor
-    * GDB
-        * break
-        * run
-        * continue
-        * x
-        * nexti
-        * stepi
-        * pwndbg / voltron
-    * pwntools
-        * u64/p64
-        * process / remote
-        * read / recvuntil / readline
-        * send / sendline
-        * interactive
-        * gdb attach
-    * crackmes
-        * tut0-func (functions/basics)
-        * crackme0x00a (strings/modification)
-        * crackme0x05 (add password/debugging)
-        * level1 crackme (xor password)
-        * level2 crackme (self-modification + product password)
-        * level3 crackme (anti-debugging + self-modification + sum password)
-2. Fundamentals of PWN
-    * Overwriting Local Variables
-    * Overwriting the Return Address
-    * Shellcoding + NOP sled (+ shellcode env var?)
-    * Return-to-libc
-3. DEP, ROP, and ASLR
-    * Return-Oriented Programming
-    * one_gadget
-    * DEP
-    * ASLR
-4. Stack Canaries, GOT/PLT, RELRO, PIE
-    * Stack Canaries
-    * GOT/PLT Overwrite
-    * RELRO
-    * PIE
-5. Miscellaneous
-    * Half-day competition (1 challenge)
-    * Talk by Andy Sellars (?)
+1. Understanding the Playing Field
+    * data representations - binary, hexadecimal, 2's complement, endianness
+    * computer model - cpu, memory, registers, compilers, linkers
+    * x86 architecture - x86, x86-64, assembly, stack, heap, memory layout
+    * examining binaries - strings, readelf, objdump, symbols, sections, segments, got, plt
+    * gdb - help, disassemble, break, run, x, display, etc.
+2. Tools of the Trade, Memory Corruption, Shellcoding
+    * pwntools - tubes, ssh, process, util, enhex, unhex, p64, u64
+    * pwndbg - context, nearpc, stack, display (db, dw, dd, dq, ds, dps), break (bp, bd, be, bc, bl)
+    * memory corruption - overwriting variables, overwriting return address, shellcode exploit
+3. DEP, ROP, and ret2libc
+    * mitigations - DEP/NX, ASLR, canaries, (full) relro, PIC/PIE, fortify source
+    * dep, ret2libc, x86 vs x86-64, ret2libc_32
+    * execve(), (srop)
+    * aslr, rop given leak
+4. Canaries, GOT+PLT
+    * a word on reverse engineering, finding main()
+    * got/plt, rop without leak
+    * canaries, canary leak
+5. Competition

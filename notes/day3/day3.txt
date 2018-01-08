@@ -1,6 +1,7 @@
 3. DEP, ROP, and ret2libc
-    * mitigations
-    * dep, ret2libc
+    * mitigations - DEP/NX, ASLR, canaries, (full) relro, PIC/PIE, fortify source
+    * dep, ret2libc, x86 vs x86-64, ret2libc_32
+    * execve(), (srop)
     * aslr, rop given leak
 
 ==== Mitigations ====
@@ -34,6 +35,10 @@ library code while PIE is for executables
 Adds additional checks at compile and/or runtime, but may violate code
 conformity
 
+Something to be aware of: most functions to read input will stop when they
+encounter a whitespace character. Keep this in mind when writing exploits, and
+check "man ascii" when in doubt.
+
 ==== DEP and ROP ====
 Return-Oriented Programming (ROP) is an exploit technique to bypass DEP. Rather
 than inject shellcode into the program, we overwrite the return address with one
@@ -63,6 +68,107 @@ We also find a "pop ret" gadget so that we can pass "/bin/sh" as the argument.
 
 This particular ROP technique is called return-to-libc (ret2libc) since we spawn
 the shell by returning to a libc function.
+
+** ret2libc_32
+* view source
+* explain the difference in calling convention and the modified plan
+* let the students spawn the shell
+
++----------------+
+|     system     |
++----------------+
+|    padding     |
++----------------+
+|   "/bin/sh"    |
++----------------+
+
+Chaining rop gadgets is different in x86 vs x86-64. An x86 rop chain has the
+form
+
++----------------+
+|   function 1   |
++----------------+
+|  pop-pop-ret   |
++----------------+
+|     arg 1      |
++----------------+
+|     arg 2      |
++----------------+
+        + 
++----------------+
+|   function 2   |
++----------------+
+| pop-pop-pop-ret|
++----------------+
+|     arg 1      |
++----------------+
+|     arg 2      |
++----------------+
+|     arg 3      |
++----------------+
+        +
++----------------+
+|      ...       |
++----------------+
+
+While an x86-64 rop chain has the form
+
++--------------------------------+
+|     pop rdi; pop rsi; ret      |
++--------------------------------+
+|            arg 1               |
++--------------------------------+
+|            arg 2               |
++--------------------------------+
+|          function 1            |
++--------------------------------+
+               + 
++--------------------------------+
+| pop rdi; pop rsi; pop rdx; ret |
++--------------------------------+
+|            arg 1               |
++--------------------------------+
+|            arg 2               |
++--------------------------------+
+|            arg 3               |
++--------------------------------+
+|          function 2            |
++--------------------------------+
+               +
++--------------------------------+
+|             ...                |
++--------------------------------+
+
+==== execve() and SROP ====
+If a binary is not linked to system(), we can still spawn a shell by invoking
+the execve() syscall. The value in rax specifies the syscall, and the arguments
+are loaded into registers. The syscall is then invoked by executing the int
+0x80 instruction for x86, or the syscall instruction for x86-64.
+
+Under x86, the registers for syscall arguments are, in order:
+ebx, ecx, edx, esi, edi
+
+Under x86-64, the registers for syscall arguments are, in order:
+rdi, rsi, rdx, r10, r8, r9
+
+In order to write the arguments into registers, we typically use a "pop ret"
+gadget, followed by the arguments we wish to write. For example, the following
+gadget will write 0x3b (the syscall number for execve()) to rax:
+
++--------------------------------+
+|address of pop rax ; ret gadget |
++--------------------------------+
+|              0x3b              |
++--------------------------------+
+
+After using gadgets like the one above to specify all of the syscall arguments,
+we can use a syscall (or int 0x80 on x86) instruction to invoke the syscall.
+
+**syscall
+* view source, point out lack of system() call
+* find a gadget to write 59 (0x3b) to rax
+* let students spawn the shell
+* brief mention of SROP
 
 ==== ASLR ====
 Although ASLR randomizes the locations of the stack, heap, and shared libraries,

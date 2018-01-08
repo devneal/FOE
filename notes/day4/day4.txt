@@ -1,6 +1,33 @@
 4. Canaries, GOT+PLT
+    * a word on reverse engineering
     * got/plt, rop without leak
     * canaries, canary leak
+
+==== a word on reverse engineering ====
+As you get more experience in the world of reverse engineering, you'll find that
+the real challenge is in understanding the program well enough to start crafting
+an exploit. There are a number of programs available to make this (intrinsically
+difficult) process easier, although they vary in price and quality.
+
+* IDA Pro - The most powerful and long-standing reverse engineering solution,
+  complete with a debugger and decompiler. Unfortunately it is crazily
+  expensive, and is thus inaccessible to all but corporate users (via legitimate
+  means).
+
+* Binary Ninja - Binary Ninja is likely the best competitor to IDA Pro at the
+  moment. Fortunately, it is priced within the reach of a hobbyist university
+  student. Unfortunately, it is still quite early in development and can be a
+  bit buggy. Its biggest weakness is its lack of a debugger, which means you'll
+  have to look elsewhere to do dynamic analysis.
+
+* Radare2 / Cutter - Radare2 is the most powerful open-source solution to
+  reverse engineering. It was a stricly command-line based tool until just
+  recently, when the Cutter GUI was added for it.
+
+* pwndbg, gdb, objdump, strace, ltrace, strings, etc. - these are the go-to
+  solutions for when a (comparatively) low-power solution will suffice. They are
+  available pretty much everywhere (with the exception of pwndbg), and can be
+  used to glean a small amount of information easily.
 
 ==== GOT and PLT ====
 The plt is a list of code stubs, one for each shared library function and one
@@ -37,3 +64,18 @@ candidate target for exploitation.
 +----------------+
 |      main      |
 +----------------+
+
+==== Stack Canaries ====
+A stack canary is a randomly generated machine word which is inserted into every
+stack frame to separate the local variables from the base pointer and return
+address. If it is modified before the function returns, the program will throw
+an error and terminate. This makes it more difficult to run buffer overflow
+exploits since the attacker must first know (or guess) the randomly generated
+canary.
+
+** canary_leak
+* view source, disassembly, and checksec
+* point out __stack_chk_fail
+* point out the leak
+* explain the plan: leak canary, leak puts() address, call system()
+* let students spawn the shell

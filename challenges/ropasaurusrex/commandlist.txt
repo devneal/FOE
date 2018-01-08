@@ -1,0 +1,7 @@
+b __libc_start_main
+set $main=0x804841d
+set $buf=0xffffcf40
+b *$main
+b *0x8048416
+b *0x804841c
+bd 1

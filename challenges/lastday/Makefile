@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -fstack-protector -z relro -z now -pie -fPIC
+CFLAGS = -fstack-protector -z relro -z now -pie -fPIC -g
 
 all: lastday
 

