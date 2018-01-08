@@ -96,6 +96,7 @@ WORKDIR /home/user/tools
 RUN git clone https://github.com/pwndbg/pwndbg
 WORKDIR /home/user/tools/pwndbg
 RUN ./setup.sh
+
 # Set the locale
 RUN sudo locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8

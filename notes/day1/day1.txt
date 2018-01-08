@@ -18,6 +18,8 @@ scaled by twice as much as the one to its right.
             = 128 + 64 + 0 + 16 + 0 + 4 + 2 + 0
             = 214
 
+n bits can represent any value in [0, 2^n - 1].
+
 * Hexadecimal
 Every string of 4 bits can be represented with a unique hexadecimal digit. Since
 hexadecimal digits take values from 0-15, we use a-f as digits with values
@@ -44,7 +46,7 @@ hex digit values
 * Two's Complement
 We use two's complement to handle negative numbers in binary. In two's
 complement, the leftmost bit is given a negative value. This changes the range
-of possible values from 0 - 2^n-1 to -2^{n-1} - 2^{n-1}-1.
+of possible values from [0, 2^n-1] to [-2^{n-1}, 2^{n-1} - 1].
 
 10000000(2) = 1 * -2^7 + 0 * 2^6 + 0 * 2^5 + 0 * 2^4 + 0 * 2^3 + 0 * 2^2 + 0 * 2^1 + 0 * 2^0
             = -128 + 0 + 0 + 0 + 0 + 0 + 0 + 0
@@ -192,16 +194,18 @@ Intel assembly instructions typically have one of two forms:
 2) leave          - an alias for "mov esp, ebp; pop ebp" used before returning
                     from a function
 3) ret            - move the address at the top of the stack into rip, then
-                    increment stack pointer
-4) jmp - unconditional jump
-5) je  - jump if equal (to zero)
-6) jne - jump if not equal (to zero)
-7) jl  - jump if less (than zero)
-8) jle - jump if less than or equal (to zero)
-9) jg  - jump if greater (than zero)           
-10) jge - jump if greater than or equal (to zero)
-11) cmp - perform subtraction, but ignore the result (only set rflags)
-12) test - perform and, but ignore the result (only set rflags)
+                    increment stack pointer ("pop eip")
+
+TODO: all should have <addr> argument
+4) jmp <addr>           - unconditional jump
+5) je  <addr>           - jump if equal (to zero)
+6) jne <addr>           - jump if not equal (to zero)
+7) jl  <addr>           - jump if less (than zero)
+8) jle <addr>           - jump if less than or equal (to zero)
+9) jg  <addr>           - jump if greater (than zero)
+10) jge <addr>          - jump if greater than or equal (to zero)
+11) cmp <arg1>, <arg2>  - perform subtraction, but ignore the result (only set rflags)
+12) test <arg1>, <arg2> - perform and, but ignore the result (only set rflags)
 
 *** Extra
 1) nop - do absolutely nothing
@@ -225,6 +229,7 @@ You now know enough to understand the following assembly snippet:
 40052e: mov DWORD PTR [rbp-0x8],0x0
 400535: mov DWORD PTR [rbp-0x4],0x0
 40053c: jmp 400548
+
 40053e: mov eax,DWORD PTR [rbp-0x4]
 400541: add DWORD PTR [rbp-0x8],eax
 400544: add DWORD PTR [rbp-0x4],0x1
@@ -262,6 +267,7 @@ the function prologue:
 
 push rbp
 mov rbp, rsp
+sub rsp, ...
 
 At the end of execution, the callee will complete the following tasks,
 called the function epilogue:
@@ -299,8 +305,8 @@ hierarchically grouped into of symbols, sections, and segments.
 * segments are groups of sections
 
 * PLT and GOT
-Together, the PLT and GOT allow ELF binaries to dynamically locate shared data
-in a process called resolution.
+Together, the Procedure Linkage Table (PLT) and Global Offset Table (GOT) allow
+ELF binaries to dynamically locate shared data in a process called resolution.
 
 The first time a function is called, execution jumps from the PLT to the GOT
 back to the PLT, where the function is resolved and the GOT is filled with its
@@ -331,8 +337,6 @@ You can view the GOT with "readelf --relocs <elf>"
 +------ jmp PLT[0]       |
     | ...                |
     +--------------------+
-
-* objdump provides an easy way to view a program's disassembly
 
 ==== GDB ====
 Running a program under a debugger such as GDB allows us to pause and inspect

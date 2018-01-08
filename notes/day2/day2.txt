@@ -70,20 +70,20 @@ context [registers / disassembly / stack / backtrace] - display
         information on the program state
 emulate / nearpc [address] - view disassembly near address (or near
         the program counter by default)
-stack             - display the stack and resolve pointers it contains
-db                - display data as bytes
-dw                - display data as words
-dd                - display data as double words
-dq                - display data as quad words
-ds                - display data as strings
-dps               - resolve pointers
-bp                - set breakpoint
-bl                - list breakpoints
-bd                - disable breakpoint
-be                - enable breakpoint
-bc                - clear breakpoint
+stack - display the stack and resolve pointers it contains
+db    - display data as bytes
+dw    - display data as words
+dd    - display data as double words
+dq    - display data as quad words
+ds    - display data as strings
+dps   - resolve pointers
+bp    - set breakpoint
+bl    - list breakpoints
+bd    - disable breakpoint
+be    - enable breakpoint
+bc    - clear breakpoint
 
-We'll walk through the execution of example_elf again, this time going over each
+Walk through the execution of example_elf again, this time going over each
 of the above commands while doing so.
 
 ==== Memory Corruption ====
