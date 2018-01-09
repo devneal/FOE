@@ -18,7 +18,7 @@ ret_overwrite:
 	$(CC) $(CFLAGS) $@.c -fno-stack-protector
 
 shellcode:
-	$(CC) $(CFLAGS) $@.c -fno-stack-protector -z execstack ret_overwrite.c
+	$(CC) $(CFLAGS)      -fno-stack-protector -z execstack ret_overwrite.c
 
 ret2libc:
 	$(CC) $(CFLAGS) $@.c -fno-stack-protector -static

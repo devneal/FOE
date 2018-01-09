@@ -21,6 +21,7 @@ Useful functions include:
                            return it
 ** readregex / recvregex - receive data until the specified regex is matched,
                            then return it
+** interactive           - interact with the process directly
 
 >>> p = process("cat")
 >>> p.send("hello")
@@ -93,29 +94,30 @@ to a buffer, as the excess data will be written to any variables beneath it (at
 a higher address). This concept is best understood with an example.
 
 ** memory_corruption
-* view source and disassembly for memory_corruption.c
-* send inputs of size 64 and 65 on the command line (pipes + alt)
-* analyze 65 byte input in gdb, mentioning how endianness affects the view
-* overwrite the token to call win() from gdb
-* let students call win with a script
-* call win from the command line
+Look at the source and disassembly for memory_corruption.c
+Send inputs of size 64 and 65 on the command line (pipes + alt)
+Analyze the 65 byte input in gdb, mentioning how endianness affects the view
+Overwrite the token to call win() from gdb
+Call win() with a script
+Call win() from the command line
 
 ** ret_overwrite
-* view source, show that memory_corruption exploit fails, and explain why (order
-  of variables switched)
-* send gradually longer inputs, including length 80 and 79
-* analyze length 80 input in gdb, show clobbered return address (before + after)
-* call win from within gdb
-* let students call win from a script
-* call win from the command line
-* use readelf --symbols to call other functions from the command line
-* chain calls, ask for explanation
+View the source, show that memory_corruption exploit fails, and see why
+    (order of variables switched)
+Send gradually longer inputs, including length 80 and 79
+Analyze length 80 input in gdb, view clobbered return address (before + after)
+Call win() from within gdb
+Call win() from a script
+call win() from the command line
+Use readelf --symbols to call other functions from the command line
+It's possible to chain multiple calls. Can you tell why?
 
 We can use shellcode to execute arbitrary instructions, rather than just the
-instructions in the program. The idea is to include machine code in our input,
-then overwrite the return address with the location of the shellcode. We can't
-determine the shellcode's location exactly however, so we will add a nop sled
-and guess several offsets.
+instructions in the program. The idea is to include machine code to spawn a
+shell, or shellcode, in our input, then overwrite the return address with the
+location of the shellcode. We can't determine the shellcode's location exactly
+however, so we will add a nop sled and guess several offsets. If the return
+address points anywhere in our nop sled, the shellcode will be executed.
 
 +----------------+
 |                |
@@ -125,7 +127,7 @@ and guess several offsets.
 |                |    |
 +----------------+    |
 |                |    |
-|  machine code  |    |
+|   shellcode    |    |
 |                |    |
 +----------------+    |
 | return address |----+
@@ -185,11 +187,20 @@ exit
 >>> 
 
 ** shellcode
-* make sure aslr is disabled!
-* showcase shellcraft and asm modules
-* write script to print payload with no nop sled, shellcode + padding + deadbeef
+Make sure aslr is disabled!
+Explore the shellcraft and asm modules
+Use a script to print a payload with no nop sled, shellcode + padding + deadbeef
   (remember to set context.arch = "amd64")
-* get approximate buffer address from gdb
-* show that exploit fails
-* add skeleton with nop sled and guess offsets
-* let students finish the exploit
+Get the approximate buffer address from gdb
+The exploit will fail, even inside gdb. The reason is VERY subtle
+Spawn a shell inside gdb without using a nop sled
+Add a nop sled and get a shell from the command line
+
+pwntools documentation:
+https://docs.pwntools.com/en/stable/
+
+pwndbg features:
+https://github.com/pwndbg/pwndbg/blob/dev/FEATURES.md
+
+smashing the stack for fun and profit:
+http://phrack.org/issues/49/14.html
