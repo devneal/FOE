@@ -3,7 +3,7 @@ from pwn import *
 
 s = open("10000.txt").read().split(",")
 primes = map(int, s)
-r = remote("localhost", 8888)
+r = remote("lox.xvm.mit.edu", 22000)
 
 r.readuntil("numbers?\n")
 ans1 = str(sum(primes))
