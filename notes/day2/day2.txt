@@ -16,7 +16,7 @@ Useful functions include:
 ** send                  - sends data
 ** sendline              - like send, but appends a newline before sending
 ** read / recv           - receive data
-** readline / recvline}  - receive data until a newline is found and return it
+** readline / recvline   - receive data until a newline is found and return it
 ** readuntil / recvuntil - receive data until the specified string is found, and
                            return it
 ** readregex / recvregex - receive data until the specified regex is matched,
@@ -95,9 +95,9 @@ a higher address). This concept is best understood with an example.
 
 ** memory_corruption
 Look at the source and disassembly for memory_corruption.c
-Send inputs of size 64 and 65 on the command line (pipes + alt)
+Send inputs of size 64 and 65 on the command line (pipes / shell substitution)
 Analyze the 65 byte input in gdb, mentioning how endianness affects the view
-Overwrite the token to call win() from gdb
+Overwrite the token to call win() from gdb (run < <(./prog))
 Call win() with a script
 Call win() from the command line
 
@@ -108,7 +108,7 @@ Send gradually longer inputs, including length 80 and 79
 Analyze length 80 input in gdb, view clobbered return address (before + after)
 Call win() from within gdb
 Call win() from a script
-call win() from the command line
+Call win() from the command line
 Use readelf --symbols to call other functions from the command line
 It's possible to chain multiple calls. Can you tell why?
 
