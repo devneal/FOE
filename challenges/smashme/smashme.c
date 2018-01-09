@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+int helpful() {
+  __asm__ ("call %rdi");
+}
+
 int main(int argc, char ** argv)
 {
     // unbuffered I/O
