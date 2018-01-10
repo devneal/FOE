@@ -1,6 +1,6 @@
-PROG = harder
+PROG = smashme
 CC = gcc
-CFLAGS = -static -fno-stack-protector -g
+CFLAGS = -fno-stack-protector -z execstack
 
 $(PROG): $(PROG).c
 	$(CC) $(CFLAGS) -o $(PROG) $^

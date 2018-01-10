@@ -21,4 +21,7 @@ Materials for the IAP 2018 Fundamentals of Exploitation course.
     * a word on reverse engineering, finding main()
     * got/plt, rop without leak
     * canaries, canary leak
-5. Competition
+5. Miscellaneous
+    * Challenge
+    * Continuing in Security
+    * Following security news
