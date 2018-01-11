@@ -143,9 +143,10 @@ While an x86-64 rop chain has the form
 
 ==== execve() and SROP ====
 If a binary is not linked to system(), we can still spawn a shell by invoking
-the execve() syscall. The value in rax specifies the syscall, and the arguments
-are loaded into registers. The syscall is then invoked by executing the int
-0x80 instruction for x86, or the syscall instruction for x86-64.
+the execve() syscall. The value in rax specifies which syscall to execute, and
+the arguments are loaded into registers. The syscall is then invoked by
+executing the int 0x80 instruction for x86, or the syscall instruction for
+x86-64.
 
 Under x86, the registers for syscall arguments are, in order:
 ebx, ecx, edx, esi, edi
@@ -171,7 +172,7 @@ we can use a syscall (or int 0x80 on x86) instruction to invoke the syscall.
 
 ** syscall
 View source, and note the lack of a system() call
-Note that our goal is to call execve("/bin/sh", NULL, NULL)
+Our new goal is to call execve("/bin/sh", NULL, NULL)
 Find a gadget to write 59 (0x3b) to rax
 Spawn a shell
 There is a variant of this called SROP, in which all registers are reset with
@@ -186,6 +187,7 @@ locations of everything else in the library.
 ** use_leak
 View the source code, taking note of the leak
 Programmatically read the address with pwntools using read(num)
+Find the location of the libc the binary uses with ldd <binary>
 Find puts and system offsets with readelf (suffix @@GLIBC_2.2.5)
 Find "/bin/sh" offset with strings -tx
 Spawn the shell
