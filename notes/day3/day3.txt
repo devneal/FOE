@@ -75,11 +75,13 @@ Note the difference in calling convention and the modified ROP chain we need
 Spawn the shell
 
 +----------------+
-|     system     |
-+----------------+
 |    padding     |
 +----------------+
-|   "/bin/sh"    |
+|     system     | <--- from pwndbg
++----------------+
+|    padding     | <--- anything
++----------------+
+|   "/bin/sh"    | <--- from pwndbg
 +----------------+
 
 Chaining rop gadgets is different in x86 vs x86-64. An x86 rop chain has the

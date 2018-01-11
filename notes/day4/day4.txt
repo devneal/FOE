@@ -20,7 +20,7 @@ difficult) process easier, although they vary in price and quality.
   bit buggy. Its biggest weakness is its lack of a debugger, which means you'll
   have to look elsewhere to do dynamic analysis.
 
-* Radare2 / Cutter - Radare2 is the most powerful open-source solution to
+* Radare2 / Cutter - Radare2 is the most powerful open-source solution for
   reverse engineering. It was a stricly command-line based tool until just
   recently, when the Cutter GUI was added for it.
 

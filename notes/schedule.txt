@@ -14,7 +14,7 @@
     * execve(), (srop)
     * aslr, rop given leak
 4. Canaries, GOT+PLT
-    * a word on reverse engineering, finding main()
+    * a word on reverse engineering
     * got/plt, rop without leak
     * canaries, canary leak
 5. Challenges
