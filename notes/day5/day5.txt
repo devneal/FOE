@@ -1,0 +1,11 @@
+TechSec list of resources:
+https://github.com/TechSecCTF/meeting_notes/tree/master/12-04-17_keeping_up_w_security
+
+MacOS Login Bug Disclosure:
+https://twitter.com/lemiorhan/status/935578694541770752
+
+MacOS IOHIdeous Exploit:
+https://siguza.github.io/IOHIDeous/
+
+Spectre/Meltdown Exploit:
+https://meltdownattack.com

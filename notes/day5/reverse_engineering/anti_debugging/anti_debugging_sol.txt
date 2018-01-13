@@ -1,2 +1,0 @@
-If you edit out the call to ptrace(), you can simply break before the call to
-strcmp() and read the flag off of the stack.
