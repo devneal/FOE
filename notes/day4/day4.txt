@@ -46,14 +46,14 @@ In order for this to work, the got must be writable. This makes it a prime
 candidate target for exploitation.
 
 ** make_leak
-* view source code (file and checksec), ask for exploitation suggestions
-* explain the plan in detail:
+View the source code (file and checksec), ask for exploitation suggestions
+Understand the plan in detail:
   1) read() puts() address from the got
   2) return to main()
   3) ret2libc as before
-* find puts@plt with objdump -d -j .plt (or pwndbg)
-* find puts@got with readelf --relocs (or pwndbg)
-* let students spawn the shell
+Find puts@plt with objdump -d -j .plt (or pwndbg)
+Find puts@got with readelf --relocs (or pwndbg)
+Spawn the shell
 
 +----------------+
 |  pop rdi; ret  |
@@ -74,8 +74,8 @@ exploits since the attacker must first know (or guess) the randomly generated
 canary.
 
 ** canary_leak
-* view source, disassembly, and checksec
-* point out __stack_chk_fail
-* point out the leak
-* explain the plan: leak canary, leak puts() address, call system()
-* let students spawn the shell
+View the source, disassembly, and checksec
+Note the call to __stack_chk_fail
+Point out the leak
+Understand the plan: leak canary, leak puts() address, call system()
+Spawn the shell
