@@ -25,3 +25,16 @@ Materials for the IAP 2018 Fundamentals of Exploitation course.
     * Challenge
     * Continuing in Security
     * Following security news
+
+## Resources
+
+### Pwning Practice
+
+* [ropemporium.com](http://ropemporium.com)
+* [pwnable.kr](http://pwnable.kr/)
+* [microcorruption](https://microcorruption.com/login)
+* [overthewire](http://overthewire.org/wargames/)
+
+### References
+
+* [TechSec Pwn Tips Wiki](https://github.com/TechSecCTF/CTF-pwn-tips/wiki)
